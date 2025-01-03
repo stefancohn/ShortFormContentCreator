@@ -1,6 +1,8 @@
 import subprocess
-import praw
+import os
 import config
+
+import praw
 import language_tool_python
 
 from elevenlabs import play,save
@@ -16,7 +18,8 @@ from aeneas.task import Task
 def get_title_user_and_body(submission: praw.models.Submission) -> dict:
     return {
         "title" : submission.title,
-        "user" : submission.author,
+        "user" : submission.author.name,
+        "subreddit" : submission.subreddit.display_name,
         "body" : submission.selftext
     }
 
@@ -33,11 +36,13 @@ def get_audio_file_elevenlabs(text: str):
     return audio
 
 #helper to create subtitle map for video
-def create_subtitle_map() -> str:
-    aeneas_task.audio_file_path = "audio.AIFF"
-    aeneas_task.text_file_path = "transcript.txt"
-    aeneas_task.subtitle_map_path = "subtitle_map.json"
-    return "wiener"
+def create_subtitle_map():
+    aeneas_task.audio_file_path_absolute = os.path.abspath("audio.AIFF")
+    aeneas_task.text_file_path_absolute = os.path.abspath("transcript.txt")
+    aeneas_task.sync_map_file_path_absolute = os.path.abspath("subtitle_map.json")
+
+    ExecuteTask(aeneas_task).execute()
+    aeneas_task.output_sync_map_file()
 
 #helper to use ffmpeg to create video
 def combine_video_audio_subtitles(video_url: str):
@@ -73,7 +78,7 @@ client = ElevenLabs(
 
 #configure pyttsx3
 engine = pyttsx3.init("nsss")
-engine.setProperty('rate', 100)    
+engine.setProperty('rate', 120)    
 
 #create task obj for aeneas
 config_string = u"task_language=eng|is_text_type=plain|os_task_file_format=json"
@@ -89,7 +94,16 @@ post = get_title_user_and_body(submission)
 
 #run language_tool on body
 corrected_text = tool.correct(post['body'])
-print(corrected_text)
+
+#concenate all relevant fields of post into one string
+transcript = post['title'] + ",\n" + "from r/" + post['subreddit'] + ", by u/" + post['user']
+transcript+= ", \n\n" + corrected_text
+print(transcript)
+
+#write corrected text to txt file
+f = open("transcript.txt", "w")
+f.write(transcript)
+f.close()
 
 #tts, play, and save with eleven labs
 #audio = get_audio_file_elevenlabs(corrected_text)
@@ -98,8 +112,11 @@ print(corrected_text)
 
 #tts with pyttsx3
 engine.say("a")
-engine.save_to_file(corrected_text, 'audio.AIFF')
+engine.save_to_file(transcript, 'audio.AIFF')
 engine.runAndWait()
+
+#use alligner to gnereate subtitle map with audio
+create_subtitle_map()
 
 #combine video and audio
 combine_video_audio_subtitles("../bgVideos/bballBoom.mp4")
