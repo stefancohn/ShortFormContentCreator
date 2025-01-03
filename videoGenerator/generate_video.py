@@ -13,6 +13,13 @@ import pyttsx3
 from aeneas.executetask import ExecuteTask
 from aeneas.task import Task
 
+# Requires Python 3.11.0
+
+# This script takes a reddit post url, parses it,
+# corrects it, then creates a video along with subtitles
+# Makes use of aeneas to align subtitles with audio in video
+# All files created get sent to outputs directory
+
 
 #helper that returns title, user, and body in dict
 def get_title_user_and_body(submission: praw.models.Submission) -> dict:
@@ -37,9 +44,9 @@ def get_audio_file_elevenlabs(text: str):
 
 #helper to create subtitle map for video
 def create_subtitle_map():
-    aeneas_task.audio_file_path_absolute = os.path.abspath("audio.AIFF")
-    aeneas_task.text_file_path_absolute = os.path.abspath("transcript.txt")
-    aeneas_task.sync_map_file_path_absolute = os.path.abspath("subtitle_map.json")
+    aeneas_task.audio_file_path_absolute = os.path.abspath("outputs/audio.AIFF")
+    aeneas_task.text_file_path_absolute = os.path.abspath("outputs/transcript.txt")
+    aeneas_task.sync_map_file_path_absolute = os.path.abspath("outputs/subtitle_map.json")
 
     ExecuteTask(aeneas_task).execute()
     aeneas_task.output_sync_map_file()
@@ -49,10 +56,10 @@ def combine_video_audio_subtitles(video_url: str):
     ffmpeg_command = [
         "ffmpeg", "-y",
         "-i" , video_url,
-        "-i" , "audio.AIFF",
+        "-i" , "outputs/audio.AIFF",
         #map takes only video stream from 0th idx, audio from 1st idx, -shortest makes output length of shortest input
         "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-shortest", 
-        "output.mp4",
+        "outputs/video.mp4",
     ]
     subprocess.run(ffmpeg_command)
 
@@ -101,7 +108,7 @@ transcript+= ", \n\n" + corrected_text
 print(transcript)
 
 #write corrected text to txt file
-f = open("transcript.txt", "w")
+f = open("outputs/transcript.txt", "w")
 f.write(transcript)
 f.close()
 
@@ -112,7 +119,7 @@ f.close()
 
 #tts with pyttsx3
 engine.say("a")
-engine.save_to_file(transcript, 'audio.AIFF')
+engine.save_to_file(transcript, 'outputs/audio.AIFF')
 engine.runAndWait()
 
 #use alligner to gnereate subtitle map with audio
