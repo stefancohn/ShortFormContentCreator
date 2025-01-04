@@ -1,6 +1,7 @@
 import subprocess
 import os
 import json
+import requests
 import config
 
 import praw
@@ -55,6 +56,7 @@ def combine_video_audio_subtitles(video_url: str):
         "ffmpeg", "-y",
         "-stream_loop", "-1",
         "-i" , video_url,
+        "-itsoffset", "5",
         "-i" , "outputs/audio.AIFF",
         "-vf", "ass=outputs/subtitles.ass",
         #map takes only video stream from 0th idx, audio from 1st idx, -shortest makes output length of shortest input
@@ -63,6 +65,7 @@ def combine_video_audio_subtitles(video_url: str):
         "-c:v", "libx264",
         "-c:a", "aac", 
         "-shortest", 
+        "-async", "1",
         "outputs/video.mp4",
     ]
     subprocess.run(ffmpeg_command)
@@ -77,6 +80,10 @@ def get_event_string() -> str :
 
     #iterate over all time stamps in aeneas
     for fragment in data["fragments"] :
+        #add 5 second offset to all timestamps for beginning card
+        fragment["begin"] = str(float(fragment["begin"]) + 5)
+        fragment["end"] = str(float(fragment["end"])+5)
+
         # cast to a string, secs are formatted as 00:00
         # and minutes are formated as 00
         beg_min = float(fragment["begin"])//60
@@ -95,17 +102,28 @@ def get_event_string() -> str :
 
 # Create .ass file for subtitles
 def write_subtitles():
-    script_info="[Script Info]\nPlayResX: 600\nPlayResY: 600\nWrapStyle: 1\n\n"
+    #set up boiler plate .ass info
+    script_info="[Script Info]\nPlayResX: 600\nPlayResY: 600\nWrapStyle: 1\n"
 
     script_style="[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, Alignment, Encoding\n"
     script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&Hffffff,&Hffffff,5,0\n"
 
     script_events = "[Events]\nFormat: Start, End, Style, Text\n"
     script_events += get_event_string() 
-    print(script_events)
-
+    
+    #write .ass file
     with open("outputs/subtitles.ass", 'w') as ass_file:
         ass_file.write(script_info + script_style + script_events)
+
+# helper to get figma card
+def get_figma_card():
+    url = f"https://api.figma.com/v1/files/{config.figma_file_id}"
+    headers = {
+        "X-Figma-Token": config.figma_api_key
+    }
+    response = requests.get(url, headers=headers)
+    print(response)
+
 
 
 
@@ -142,6 +160,7 @@ subtitle_size = "60"
 
 
 
+get_figma_card()
 #get url from user, set as submission, get all relevant info
 url: str = input()
 submission: praw.models.Submission = reddit.submission(url=url)
