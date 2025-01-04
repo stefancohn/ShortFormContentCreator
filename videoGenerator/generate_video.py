@@ -73,7 +73,21 @@ def get_event_string() -> str :
     with open ("outputs/subtitle_map.json", 'r') as file:
         data = json.load(file)
     
-    print(data)
+    ret_val = ""
+
+    #iterate over all time stamps in aeneas
+    for fragment in data["fragments"] :
+        beg_min = float(fragment["begin"])//60
+        beg_sec = float(fragment["begin"])%60
+
+        end_min = float(fragment["end"])//60
+        beg_sec = float(fragment["end"])%60
+
+        #TODO: Finish tmrw
+        print(f"{beg_sec:05.2f}")
+
+        ret_val+=f"Dialogue: 0:" 
+
     return("wiener")
 
 # Create .ass file for subtitles
@@ -136,6 +150,9 @@ post = get_title_user_and_body(submission)
 
 #run language_tool on body
 corrected_text = tool.correct(post['body'])
+#add line breaks so aeneas givees time stamp for each word
+corrected_text = corrected_text.split()
+corrected_text = "\n".join(corrected_text)
 
 #concenate all relevant fields of post into one string
 transcript = post['title'] + ",\n" + "from r/" + post['subreddit'] + ", by u/" + post['user']
