@@ -1,15 +1,13 @@
 import subprocess
 import os
+import json
 import config
 
 import praw
 import language_tool_python
-
+import pyttsx3
 from elevenlabs import play,save
 from elevenlabs.client import ElevenLabs
-
-import pyttsx3
-
 from aeneas.executetask import ExecuteTask
 from aeneas.task import Task
 
@@ -55,13 +53,46 @@ def create_subtitle_map():
 def combine_video_audio_subtitles(video_url: str):
     ffmpeg_command = [
         "ffmpeg", "-y",
+        "-stream_loop", "-1",
         "-i" , video_url,
         "-i" , "outputs/audio.AIFF",
+        "-vf", "ass=outputs/subtitles.ass",
         #map takes only video stream from 0th idx, audio from 1st idx, -shortest makes output length of shortest input
-        "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-shortest", 
+        "-map", "0:v", 
+        "-map", "1:a", 
+        "-c:v", "libx264",
+        "-c:a", "aac", 
+        "-shortest", 
         "outputs/video.mp4",
     ]
     subprocess.run(ffmpeg_command)
+
+# helper to parse json and return a string with events for .ass file
+def get_event_string() -> str :
+    #load json file
+    with open ("outputs/subtitle_map.json", 'r') as file:
+        data = json.load(file)
+    
+    print(data)
+    return("wiener")
+
+# Create .ass file for subtitles
+def write_subtitles():
+    script_info="[Script Info]\nPlayResX: 600\nPlayResY: 600\nWrapStyle: 1\n\n"
+
+    script_style="[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, Alignment, Encoding\n"
+    script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&Hffffff,&Hffffff,5,0\n"
+
+    script_events = get_event_string() 
+
+    with open("outputs/subtitles.ass", 'w') as ass_file:
+        ass_file.write(script_info + script_style +"""                       
+[Events]
+Format: Start, End, Style, Text
+Dialogue: 0:00:00.00,0:00:01.00,Default,I'm
+Dialogue: 0:00:01.00,0:00:03.46,Default,a
+Dialogue: 0:00:01.50,0:00:03.46,Default,subtitle
+        """)
 
 
 
@@ -87,9 +118,13 @@ client = ElevenLabs(
 engine = pyttsx3.init("nsss")
 engine.setProperty('rate', 120)    
 
-#create task obj for aeneas
+#config task obj for aeneas
 config_string = u"task_language=eng|is_text_type=plain|os_task_file_format=json"
 aeneas_task = Task(config_string=config_string)
+
+#config subtitles (font, size, color, strings)
+subtitle_font = "Arial"
+subtitle_size = "60"
 
 
 
@@ -122,8 +157,11 @@ engine.say("a")
 engine.save_to_file(transcript, 'outputs/audio.AIFF')
 engine.runAndWait()
 
-#use alligner to gnereate subtitle map with audio
+#use alligner to generate subtitle map with audio
 create_subtitle_map()
+
+#generate subtitles
+write_subtitles()
 
 #combine video and audio
 combine_video_audio_subtitles("../bgVideos/bballBoom.mp4")
