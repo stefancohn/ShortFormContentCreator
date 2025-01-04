@@ -117,12 +117,28 @@ def write_subtitles():
 
 # helper to get figma card
 def get_figma_card():
-    url = f"https://api.figma.com/v1/files/{config.figma_file_id}"
+    #grab over
+    file_url = f"https://api.figma.com/v1/files/{config.figma_file_id}"
     headers = {
         "X-Figma-Token": config.figma_api_key
     }
-    response = requests.get(url, headers=headers)
+    response = requests.get(file_url, headers=headers)
+    figma_json = response.json()
+
+    with open("test.json", 'w') as json_file:
+        json.dump(figma_json, json_file, indent=4)
+    
+    #node id for "Template" component
+    template_id = "1:9"
+    print(template_id)
+
+    image_url = f"https://api.figma.com/v1/images/{config.figma_file_id}?ids={template_id}&format=png"
+    headers = {
+        "X-Figma-Token": config.figma_api_key
+    }
+    response = requests.get(image_url, headers=headers)
     print(response)
+    
 
 
 
