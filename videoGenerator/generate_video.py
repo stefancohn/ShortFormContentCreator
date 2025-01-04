@@ -77,18 +77,21 @@ def get_event_string() -> str :
 
     #iterate over all time stamps in aeneas
     for fragment in data["fragments"] :
+        # cast to a string, secs are formatted as 00:00
+        # and minutes are formated as 00
         beg_min = float(fragment["begin"])//60
+        beg_min = f"{int(beg_min):02}"
         beg_sec = float(fragment["begin"])%60
+        beg_sec = f"{beg_sec:05.2f}"
 
         end_min = float(fragment["end"])//60
-        beg_sec = float(fragment["end"])%60
+        end_min = f"{int(end_min):02}"
+        end_sec = float(fragment["end"])%60
+        end_sec = f"{end_sec:05.2f}"
+        
+        ret_val+=f"Dialogue: 0:{beg_min}:{beg_sec},0:{end_min}:{end_sec},Default,{fragment['lines'][0]}\n" 
 
-        #TODO: Finish tmrw
-        print(f"{beg_sec:05.2f}")
-
-        ret_val+=f"Dialogue: 0:" 
-
-    return("wiener")
+    return(ret_val)
 
 # Create .ass file for subtitles
 def write_subtitles():
@@ -97,16 +100,12 @@ def write_subtitles():
     script_style="[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, Alignment, Encoding\n"
     script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&Hffffff,&Hffffff,5,0\n"
 
-    script_events = get_event_string() 
+    script_events = "[Events]\nFormat: Start, End, Style, Text\n"
+    script_events += get_event_string() 
+    print(script_events)
 
     with open("outputs/subtitles.ass", 'w') as ass_file:
-        ass_file.write(script_info + script_style +"""                       
-[Events]
-Format: Start, End, Style, Text
-Dialogue: 0:00:00.00,0:00:01.00,Default,I'm
-Dialogue: 0:00:01.00,0:00:03.46,Default,a
-Dialogue: 0:00:01.50,0:00:03.46,Default,subtitle
-        """)
+        ass_file.write(script_info + script_style + script_events)
 
 
 
@@ -157,7 +156,6 @@ corrected_text = "\n".join(corrected_text)
 #concenate all relevant fields of post into one string
 transcript = post['title'] + ",\n" + "from r/" + post['subreddit'] + ", by u/" + post['user']
 transcript+= ", \n\n" + corrected_text
-print(transcript)
 
 #write corrected text to txt file
 f = open("outputs/transcript.txt", "w")
