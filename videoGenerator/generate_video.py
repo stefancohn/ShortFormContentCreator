@@ -1,7 +1,7 @@
 import subprocess
 import os
 import json
-import requests
+import textwrap
 import config
 
 import praw
@@ -11,6 +11,7 @@ from elevenlabs import play,save
 from elevenlabs.client import ElevenLabs
 from aeneas.executetask import ExecuteTask
 from aeneas.task import Task
+from PIL import Image, ImageDraw, ImageFont
 
 # Requires Python 3.11.0
 
@@ -51,17 +52,18 @@ def create_subtitle_map():
     aeneas_task.output_sync_map_file()
 
 #helper to use ffmpeg to create video
-def combine_video_audio_subtitles(video_url: str):
+def create_video(video_url: str):
     ffmpeg_command = [
         "ffmpeg", "-y",
         "-stream_loop", "-1",
         "-i" , video_url,
+        "-i" , "outputs/reddit_card.png", "-filter_complex", "[0:v][1:v]overlay=25:25:enable='between(t,0,4)'",
         "-itsoffset", "5",
         "-i" , "outputs/audio.AIFF",
         "-vf", "ass=outputs/subtitles.ass",
         #map takes only video stream from 0th idx, audio from 1st idx, -shortest makes output length of shortest input
         "-map", "0:v", 
-        "-map", "1:a", 
+        "-map", "2:a", 
         "-c:v", "libx264",
         "-c:a", "aac", 
         "-shortest", 
@@ -115,29 +117,51 @@ def write_subtitles():
     with open("outputs/subtitles.ass", 'w') as ass_file:
         ass_file.write(script_info + script_style + script_events)
 
-# helper to get figma card
-def get_figma_card():
-    #grab over
-    file_url = f"https://api.figma.com/v1/files/{config.figma_file_id}"
-    headers = {
-        "X-Figma-Token": config.figma_api_key
-    }
-    response = requests.get(file_url, headers=headers)
-    figma_json = response.json()
+# helper to get reddit card
+def get_reddit_card():
+    #grab img
+    img = Image.open("../assets/redditCard.png")
+    draw = ImageDraw.Draw(img)
 
-    with open("test.json", 'w') as json_file:
-        json.dump(figma_json, json_file, indent=4)
-    
-    #node id for "Template" component
-    template_id = "1:9"
-    print(template_id)
+    #make fonts
+    subreddit_font = ImageFont.truetype("/System/Library/Fonts/Static/Inter_24pt-Bold.ttf", 36)
+    user_font = ImageFont.truetype("/System/Library/Fonts/Static/Inter_24pt-Bold.ttf", 30)
+    title_font = ImageFont.truetype("/System/Library/Fonts/Static/Inter_24pt-Bold.ttf", 40)
 
-    image_url = f"https://api.figma.com/v1/images/{config.figma_file_id}?ids={template_id}&format=png"
-    headers = {
-        "X-Figma-Token": config.figma_api_key
-    }
-    response = requests.get(image_url, headers=headers)
-    print(response)
+    #positions
+    header_x = 175
+    body_x = 50
+    subreddit_y = 40
+    user_y = 100
+    body_y = 185
+
+    #size
+    box_width = 40
+
+    # Add texts to image
+    draw.multiline_text( #subreddit
+        (header_x,subreddit_y), 
+        f"r/{post['subreddit']}", 
+        font=subreddit_font, 
+        fill="black",
+        align="left",
+    )
+    draw.multiline_text( #user
+        (header_x,user_y), 
+        f"u/{post['user']}", 
+        font=user_font, 
+        fill="gray",
+        align="left",
+    )
+    #wrapped text that goes down
+    y_offset = body_y
+    spacing =  (title_font.getbbox("SSD")[3]-title_font.getbbox("SSD")[1]) + 17
+    for line in textwrap.wrap(post['title'], width=box_width):
+        draw.text((body_x, y_offset), line, font=title_font, fill="black")
+        y_offset += (spacing) + 17
+
+    #save
+    img.save("outputs/reddit_card.png")
     
 
 
@@ -176,11 +200,12 @@ subtitle_size = "60"
 
 
 
-get_figma_card()
 #get url from user, set as submission, get all relevant info
 url: str = input()
 submission: praw.models.Submission = reddit.submission(url=url)
 post = get_title_user_and_body(submission)
+
+get_reddit_card()
 
 #run language_tool on body
 corrected_text = tool.correct(post['body'])
@@ -214,4 +239,4 @@ create_subtitle_map()
 write_subtitles()
 
 #combine video and audio
-combine_video_audio_subtitles("../bgVideos/bballBoom.mp4")
+create_video("../assets/bgVideos/bballBoom.mp4")
