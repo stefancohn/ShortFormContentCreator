@@ -58,8 +58,8 @@ def create_video(video_url: str):
         "-i" , video_url,
         "-i" , "outputs/reddit_card.png", 
         #5 second pause till audio starts to show reddit card
-        "-itsoffset", "5", "-i" , "outputs/audio.AIFF",
-        "-filter_complex", "[0:v][1:v]overlay=25:25:enable='between(t,0,4)',ass=outputs/subtitles.ass",
+        "-i" , "outputs/audio.AIFF",
+        "-filter_complex", f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',ass=outputs/subtitles.ass",
         #map takes audio stream from 1st idx, -shortest makes output length of shortest input
         "-map", "2:a", 
         "-c:v", "libx264",
@@ -76,13 +76,20 @@ def get_event_string() -> str :
     with open ("outputs/subtitle_map.json", 'r') as file:
         data = json.load(file)
     
+    #clear text in first two fragments since they will be replaced
+    #with reddit card img
+    data["fragments"][0]['lines'][0]=""
+    #set end of reddit card time
+    global end_of_reddit_card
+    end_of_reddit_card = data["fragments"][0]['end']
+
     ret_val = ""
 
     #iterate over all time stamps in aeneas
     for fragment in data["fragments"] :
-        #add 5 second offset to all timestamps for beginning card
-        fragment["begin"] = str(float(fragment["begin"]) + 5)
-        fragment["end"] = str(float(fragment["end"])+5)
+        #add ___ offset to all timestamps for beginning card
+        fragment["begin"] = str(float(fragment["begin"]))
+        fragment["end"] = str(float(fragment["end"]))
 
         # cast to a string, secs are formatted as 00:00
         # and minutes are formated as 00
@@ -105,10 +112,13 @@ def write_subtitles():
     #set up boiler plate .ass info
     script_info="[Script Info]\nPlayResX: 600\nPlayResY: 600\nWrapStyle: 1\n"
 
-    script_style="[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, Alignment, Encoding\n"
-    script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&Hffffff,&Hffffff,5,0\n"
+    script_style="[V4+ Styles]\n"
+    script_style+="Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, Outline, Outline Colour, Alignment, Encoding\n"
+    script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&H00C8D6F8,&Hffffff,3,Hffffff,5,0\n"
 
     script_events = "[Events]\nFormat: Start, End, Style, Text\n"
+    #
+    #parse transcript map json
     script_events += get_event_string() 
     
     #write .ass file
@@ -160,6 +170,11 @@ def get_reddit_card():
 
     #save
     img.save("outputs/reddit_card.png")
+
+    #quick resize
+    img = Image.open("outputs/reddit_card.png")
+    img = img.resize((550,300), Image.Resampling.LANCZOS)
+    img.save("outputs/reddit_card.png")
     
 
 
@@ -192,8 +207,9 @@ config_string = u"task_language=eng|is_text_type=plain|os_task_file_format=json"
 aeneas_task = Task(config_string=config_string)
 
 #config subtitles (font, size, color, strings)
-subtitle_font = "Arial"
-subtitle_size = "60"
+subtitle_font = "Phosphate"
+subtitle_size = "50"
+end_of_reddit_card = None
 
 
 
@@ -212,8 +228,8 @@ corrected_text = corrected_text.split()
 corrected_text = "\n".join(corrected_text)
 
 #concenate all relevant fields of post into one string
-transcript = post['title'] + ",\n" + "from r/" + post['subreddit'] + ", by u/" + post['user']
-transcript+= ", \n\n" + corrected_text
+transcript = post['title'] + ",\n"
+transcript+= corrected_text
 
 #write corrected text to txt file
 f = open("outputs/transcript.txt", "w")
@@ -230,11 +246,11 @@ engine.say("a")
 engine.save_to_file(transcript, 'outputs/audio.AIFF')
 engine.runAndWait()
 
-#use alligner to generate subtitle map with audio
+#use alligner to generate subtitle map with audio 
 create_subtitle_map()
 
-#generate subtitles
+#generate subtitles and set end of reddit card
 write_subtitles()
 
-#combine video and audio
+#combine video and audio and subs
 create_video("../assets/bgVideos/bballBoom.mp4")
