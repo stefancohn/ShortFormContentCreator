@@ -55,14 +55,12 @@ def create_subtitle_map():
 def create_video(video_url: str):
     ffmpeg_command = [
         "ffmpeg", "-y",
-        "-stream_loop", "-1",
         "-i" , video_url,
-        "-i" , "outputs/reddit_card.png", "-filter_complex", "[0:v][1:v]overlay=25:25:enable='between(t,0,4)'",
-        "-itsoffset", "5",
-        "-i" , "outputs/audio.AIFF",
-        "-vf", "ass=outputs/subtitles.ass",
-        #map takes only video stream from 0th idx, audio from 1st idx, -shortest makes output length of shortest input
-        "-map", "0:v", 
+        "-i" , "outputs/reddit_card.png", 
+        #5 second pause till audio starts to show reddit card
+        "-itsoffset", "5", "-i" , "outputs/audio.AIFF",
+        "-filter_complex", "[0:v][1:v]overlay=25:25:enable='between(t,0,4)',ass=outputs/subtitles.ass",
+        #map takes audio stream from 1st idx, -shortest makes output length of shortest input
         "-map", "2:a", 
         "-c:v", "libx264",
         "-c:a", "aac", 
