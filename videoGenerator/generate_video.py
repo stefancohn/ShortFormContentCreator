@@ -55,6 +55,7 @@ def create_subtitle_map():
 def create_video(video_url: str):
     ffmpeg_command = [
         "ffmpeg", "-y",
+        "-stream_loop", "-1",
         "-i" , video_url,
         "-i" , "outputs/reddit_card.png", 
         #5 second pause till audio starts to show reddit card
@@ -114,7 +115,7 @@ def write_subtitles():
 
     script_style="[V4+ Styles]\n"
     script_style+="Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, Outline, Outline Colour, Alignment, Encoding\n"
-    script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&H00C8D6F8,&Hffffff,3,Hffffff,5,0\n"
+    script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&H00C8D6F8,&Hffffff,3,&Hffffff,5,0\n"
 
     script_events = "[Events]\nFormat: Start, End, Style, Text\n"
     #
@@ -208,7 +209,7 @@ aeneas_task = Task(config_string=config_string)
 
 #config subtitles (font, size, color, strings)
 subtitle_font = "Phosphate"
-subtitle_size = "50"
+subtitle_size = "45"
 end_of_reddit_card = None
 
 
@@ -228,7 +229,7 @@ corrected_text = corrected_text.split()
 corrected_text = "\n".join(corrected_text)
 
 #concenate all relevant fields of post into one string
-transcript = post['title'] + ",\n"
+transcript = post['title'] + ",,\n\n"
 transcript+= corrected_text
 
 #write corrected text to txt file
