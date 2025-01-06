@@ -1,7 +1,11 @@
-import Message from './Message'
+import Form from './components/Form.tsx'  
 
 function App() {
-  return <div><Message/></div>
+  return (
+    <>
+      {Form()}
+    </>
+  )
 }
 
 export default App
