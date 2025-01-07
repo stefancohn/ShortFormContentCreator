@@ -2,6 +2,7 @@ import subprocess
 import os
 import json
 import textwrap
+import sys
 import config
 
 import praw
@@ -19,7 +20,6 @@ from PIL import Image, ImageDraw, ImageFont
 # corrects it, then creates a video along with subtitles
 # Makes use of aeneas to align subtitles with audio in video
 # All files created get sent to outputs directory
-
 
 #helper that returns title, user, and body in dict
 def get_title_user_and_body(submission: praw.models.Submission) -> dict:
@@ -44,9 +44,9 @@ def get_audio_file_elevenlabs(text: str):
 
 #helper to create subtitle map for video
 def create_subtitle_map():
-    aeneas_task.audio_file_path_absolute = os.path.abspath("outputs/audio.AIFF")
-    aeneas_task.text_file_path_absolute = os.path.abspath("outputs/transcript.txt")
-    aeneas_task.sync_map_file_path_absolute = os.path.abspath("outputs/subtitle_map.json")
+    aeneas_task.audio_file_path_absolute = os.path.join(base_dir, "outputs/audio.AIFF")
+    aeneas_task.text_file_path_absolute = os.path.join(base_dir, "outputs/transcript.txt")
+    aeneas_task.sync_map_file_path_absolute = os.path.join(base_dir, "outputs/subtitle_map.json")
 
     ExecuteTask(aeneas_task).execute()
     aeneas_task.output_sync_map_file()
@@ -57,24 +57,24 @@ def create_video(video_url: str):
         "ffmpeg", "-y",
         "-stream_loop", "-1",
         "-i" , video_url,
-        "-i" , "outputs/reddit_card.png", 
+        "-i" , os.path.join(base_dir,"outputs/reddit_card.png"), 
         #5 second pause till audio starts to show reddit card
-        "-i" , "outputs/audio.AIFF",
-        "-filter_complex", f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',ass=outputs/subtitles.ass",
+        "-i" , os.path.join(base_dir,"outputs/audio.AIFF"),
+        "-filter_complex", f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',ass={os.path.join(base_dir,'outputs/subtitles.ass')}",
         #map takes audio stream from 1st idx, -shortest makes output length of shortest input
         "-map", "2:a", 
         "-c:v", "libx264",
         "-c:a", "aac", 
         "-shortest", 
         "-async", "1",
-        "outputs/video.mp4",
+        os.path.join(base_dir,"outputs/video.mp4"),
     ]
     subprocess.run(ffmpeg_command)
 
 # helper to parse json and return a string with events for .ass file
 def get_event_string() -> str :
     #load json file
-    with open ("outputs/subtitle_map.json", 'r') as file:
+    with open (os.path.join(base_dir, "outputs/subtitle_map.json"), 'r') as file:
         data = json.load(file)
     
     #clear text in first two fragments since they will be replaced
@@ -123,13 +123,13 @@ def write_subtitles():
     script_events += get_event_string() 
     
     #write .ass file
-    with open("outputs/subtitles.ass", 'w') as ass_file:
+    with open(os.path.join(base_dir,"outputs/subtitles.ass"), 'w') as ass_file:
         ass_file.write(script_info + script_style + script_events)
 
 # helper to get reddit card
 def get_reddit_card():
     #grab img
-    img = Image.open("../assets/redditCard.png")
+    img = Image.open(os.path.join(base_dir,"../assets/redditCard.png"))
     draw = ImageDraw.Draw(img)
 
     #make fonts
@@ -170,17 +170,18 @@ def get_reddit_card():
         y_offset += (spacing) + 17
 
     #save
-    img.save("outputs/reddit_card.png")
+    img.save(os.path.join(base_dir,"outputs","reddit_card.png"))
 
     #quick resize
-    img = Image.open("outputs/reddit_card.png")
+    img = Image.open(os.path.join(base_dir,"outputs","reddit_card.png"))
     img = img.resize((550,300), Image.Resampling.LANCZOS)
-    img.save("outputs/reddit_card.png")
+    img.save(os.path.join(base_dir,"outputs","reddit_card.png"))
     
 
 
 
-
+#the base dir so this works across everything
+base_dir = os.path.dirname(os.path.abspath(__file__))
 
 #configure praw
 reddit = praw.Reddit(
@@ -216,7 +217,7 @@ end_of_reddit_card = None
 
 
 #get url from user, set as submission, get all relevant info
-url: str = input()
+url: str = sys.argv[1]
 submission: praw.models.Submission = reddit.submission(url=url)
 post = get_title_user_and_body(submission)
 
@@ -233,7 +234,7 @@ transcript = post['title'] + ",,\n\n"
 transcript+= corrected_text
 
 #write corrected text to txt file
-f = open("outputs/transcript.txt", "w")
+f = open(os.path.join(base_dir, "outputs/transcript.txt"), "w")
 f.write(transcript)
 f.close()
 
@@ -244,7 +245,7 @@ f.close()
 
 #tts with pyttsx3
 engine.say("a")
-engine.save_to_file(transcript, 'outputs/audio.AIFF')
+engine.save_to_file(transcript, os.path.join(base_dir,'outputs/audio.AIFF'))
 engine.runAndWait()
 
 #use alligner to generate subtitle map with audio 
@@ -254,4 +255,4 @@ create_subtitle_map()
 write_subtitles()
 
 #combine video and audio and subs
-create_video("../assets/bgVideos/bballBoom.mp4")
+create_video(os.path.join(base_dir,"../assets/bgVideos/bballBoom.mp4"))
