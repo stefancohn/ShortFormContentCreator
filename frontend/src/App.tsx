@@ -15,7 +15,7 @@ function App() {
 
   return (
     <>
-      <UrlForm apiUrl={"http://localhost:8080/reddit_video_api"} />
+      <UrlForm apiUrl={"http://localhost:8080/reddit_video_api"} type='Reddit' />
     </>
   )
 }
