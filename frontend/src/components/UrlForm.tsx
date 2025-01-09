@@ -4,84 +4,84 @@ import axios, { AxiosResponse } from "axios";
 interface Props {
     apiUrl: string,
     type: string,
+    handleUrlSubmit: (
+        e: React.FormEvent<HTMLFormElement>, 
+        setLoading: React.Dispatch<React.SetStateAction<boolean>>, 
+        videoUrl: string,
+        setVideoUrl: React.Dispatch<React.SetStateAction<string>>,
+        apiUrl: string,
+        url: string,
+    ) => Promise<void>;
 }
 
 
-function UrlForm({ apiUrl, type }: Props) {
+function UrlForm({ apiUrl, type, handleUrlSubmit }: Props) {
     //SETUP---------------
     //vars
     const [url, setUrl] = useState<string>('');
     const [videoUrl, setVideoUrl] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
 
-    //handle url form submission 
-    const handleUrlSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setLoading(true);
-
-        //if user tries to generator another video, reset videoUrl
-        if (videoUrl !== "") {
-            setVideoUrl("");
-        }
-
-        //submit POST req
-        try {
-            //get binary video, blob
-            const resp: AxiosResponse = await axios.post(apiUrl, { url: url }, {
-                responseType: 'blob'
-            });
-            
-            //when we receive response, load video
-            console.log(resp.headers)
-            const videoBlob = new Blob([resp.data], {type: 'video/mp4'});
-            setVideoUrl(URL.createObjectURL(videoBlob))
-            
-        } 
-        catch (e) { 
-            console.log(e) 
-        }  //catch error
-        finally { 
-            setLoading(false) 
-        } //set loading to false
-    }
+    const headerTitle : string = "Reddit Video Generator";
+    const bodyText : string = `This is a Reddit Video Generator. It will generate a video with a Reddit card in the beginning.
+        Then, a TTS program will read the post body along with subtitles on the screen.
+        The background will feature gameplay.\n
+        The longer the post, the longer the load time. 
+        Please enter a Reddit URL to generate a video.
+    `;
 
 
 
     //CONSTRUCTION OF COMPONENT---------------
     return (
         <>
+        <div className="flex flex-row items-center justify-center">
 
-        {/* Take in URL for reddit video */}
-        <form className="flex flex-col space-y-4" onSubmit={(e) => handleUrlSubmit(e)}>
-            <label className="self-center" >
-                {type} URL:
-                <input
-                    className="bg-blue-500 rounded ml-4"
-                    type="text"
-                    id="redditUrl"
-                    value={url}
-                    onChange={e => setUrl(e.target.value)}
-                />
+            {/* Title and desc */}
+            <div className="w-1/2 h-[60vh] flex flex-col justify-evenly items-center bg-blue-600 m-2 p-4 text-white rounded-3xl">
+                <div className="blue-glass">
+                    <h1 className="text-2xl font-bold underline">{headerTitle}</h1>
+                    <p className="text-sm">{bodyText}</p>
+                </div>
 
-            </label>
-            <button type="submit">Submit</button>
-        </form>
+                {/* Take in URL for reddit video and submit */}
+                <form className="blue-glass flex flex-col w-3/5 gap-2 justify-self-center items-center" onSubmit={(e) => handleUrlSubmit(e, setLoading, videoUrl, setVideoUrl, apiUrl, url)}>
+                    <label className="w-full flex flex-col gap-2 items-center" >
+                        <b>{type} URL:</b>
+                        <input
+                            className="text-black bg-white rounded w-3/4"
+                            type="text"
+                            id="redditUrl"
+                            value={url}
+                            onChange={e => setUrl(e.target.value)}
+                        />
 
-        {/* Conditional For When Video is Loaded */}
-        {videoUrl !== "" && 
-            <>
-                <video controls width="40%" height="60%">
-                    <source src={videoUrl} type="video/mp4"></source>
-                </video>
+                    </label>
+                    <button type="submit" className="blue-button">Submit</button>
+                </form>
+            </div>
 
-                <a href={videoUrl} download="ssfc.mp4">Download Video</a>
-            </>
-        }
+            
+            {/* Video/Load Display */}
+            <div className={`${loading || videoUrl !== "" ? 'w-1/3 ' : 'invisible w-0 h-0'} transition-all ease-in duration-1000 flex flex-col gap-y-4 items-center justify-center bg-blue-600 rounded-3xl p-4`}>
+                {/* Conditional For When Loading */}
+                <div>
+                    <h1 className={`text-white ${loading ? 'text-3xl' : 'text-0'} transition-all ease-in duration-1000 font-bold`}>Loading...</h1>
+                </div>
 
-        {/* Conditional For When Loading */}
-        {loading && 
-            <h1>Loading...</h1>
-        }
+                {/* Conditional For When Video is Loaded */}
+                {videoUrl !== "" && 
+                    <>
+                        <video controls className="w-40 rounded-xl shadow-xl ring-4 ring-blue-400">
+                            <source src={videoUrl} type="video/mp4"></source>
+                        </video>
+
+                        <a href={videoUrl} download="ssfc.mp4" className="blue-button">Download Video</a>
+                    </>
+                }
+            </div> 
+
+        </div>
         </>
     
     );
