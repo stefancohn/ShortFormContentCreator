@@ -7,12 +7,7 @@ interface Props {
     apiUrl: string,
     type: string,
     handleUrlSubmit: (
-        e: React.FormEvent<HTMLFormElement>, 
-        setLoading: React.Dispatch<React.SetStateAction<boolean>>, 
-        videoUrl: string,
-        setVideoUrl: React.Dispatch<React.SetStateAction<string>>,
-        apiUrl: string,
-        url: string,
+        ...args: any[]
     ) => Promise<void>;
 }
 
@@ -37,38 +32,37 @@ function UrlForm({ apiUrl, type, handleUrlSubmit }: Props) {
     //CONSTRUCTION OF COMPONENT---------------
     return (
         <>
+        <div className="flex flex-row items-center justify-center">
 
-        {/* Take in URL for reddit video */}
-        <form className="flex flex-col space-y-4" onSubmit={(e) => handleUrlSubmit(e)}>
-            <label className="self-center" >
-                {type} URL:
-                <input
-                    className="bg-blue-500 rounded ml-4"
-                    type="text"
-                    id="redditUrl"
-                    value={url}
-                    onChange={e => setUrl(e.target.value)}
-                />
+            {/* Title and desc */}
+            <div className="w-1/2 h-[60vh] flex flex-col justify-evenly items-center bg-blue-600 m-2 p-4 text-white rounded-3xl">
+                <div className="blue-glass">
+                    <h1 className="text-2xl font-bold underline">{headerTitle}</h1>
+                    <p className="text-sm">{bodyText}</p>
+                </div>
 
-            </label>
-            <button type="submit">Submit</button>
-        </form>
+                <OptionsForm Options={{}}/>
 
-        {/* Conditional For When Video is Loaded */}
-        {videoUrl !== "" && 
-            <>
-                <video controls width="40%" height="60%">
-                    <source src={videoUrl} type="video/mp4"></source>
-                </video>
+                {/* Take in URL for reddit video and submit */}
+                <form className="blue-glass flex flex-col w-3/5 gap-2 justify-self-center items-center" onSubmit={(e) => handleUrlSubmit(e, setLoading, videoUrl, setVideoUrl, apiUrl, url)}>
+                    <label className="w-full flex flex-col gap-2 items-center" >
+                        <b>{type} URL:</b>
+                        <input
+                            className="text-black bg-white rounded w-3/4"
+                            type="text"
+                            id="redditUrl"
+                            value={url}
+                            onChange={e => setUrl(e.target.value)}
+                        />
+                    </label>
+                    <button type="submit" className="blue-button">Submit</button>
+                </form>
+            </div>
 
-                <a href={videoUrl} download="ssfc.mp4">Download Video</a>
-            </>
-        }
+            
+            <VideoLoadDisplay loading={loading} videoUrl={videoUrl}/>
 
-        {/* Conditional For When Loading */}
-        {loading && 
-            <h1>Loading...</h1>
-        }
+        </div>
         </>
     
     );
