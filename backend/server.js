@@ -31,6 +31,9 @@ app.post("/reddit_video_api", (req, res) => {
     pythonProcess.stderr.on('data', (data) => {
         console.error(`stderr: ${data}`);
     });
+    pythonProcess.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`);
+    });
 
     //on end of child process
     pythonProcess.on('close', (code) => {
@@ -42,13 +45,15 @@ app.post("/reddit_video_api", (req, res) => {
 
             res.setHeader('Content-Type', 'video/mp4');
             res.sendFile(videoPath);
+
         } 
         else {
             res.status(500).json({ message: "Error in generating video" });
         }
     });
-
 });
+
+//a subsequenet GET call to recieve the caption
 
 app.listen(8080, ()=>{
     console.log("Server is running on port 8080");

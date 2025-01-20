@@ -3,6 +3,9 @@ import os
 import json
 import textwrap
 import sys
+from dataclasses import dataclass
+import random
+from typing import List
 import config
 
 import praw
@@ -13,6 +16,8 @@ from elevenlabs.client import ElevenLabs
 from aeneas.executetask import ExecuteTask
 from aeneas.task import Task
 from PIL import Image, ImageDraw, ImageFont
+import librosa
+from yake import KeywordExtractor
 
 # Requires Python 3.11.0
 
@@ -25,16 +30,13 @@ from PIL import Image, ImageDraw, ImageFont
 def get_title_user_and_body(submission: praw.models.Submission) -> dict:
     return {
         "title" : submission.title,
-        "user" : submission.author.name,
+        "user" : submission.author.name if submission.author is not None else "deleted",
         "subreddit" : submission.subreddit.display_name,
         "body" : submission.selftext
     }
 
 #helper to return audio file with eleven labs
 def get_audio_file_elevenlabs(text: str):
-    client = ElevenLabs(
-        api_key=config.elevenlabs_api_key 
-    )
     audio = client.generate(
         text=text,
         voice="Brian",
@@ -42,9 +44,32 @@ def get_audio_file_elevenlabs(text: str):
     )
     return audio
 
+#write caption to file 
+def generate_caption(text: str) -> str:
+    tags: List[str] = [keyword for keyword, score in tagger.extract_keywords(text)]
+    
+    caption = f"-\nMade With Short-Form Content Creator\nGame: BBall Boom\n#reddit #shorts #story #r #{post['subreddit']} "
+
+    for i in range(len(tags)):
+        # want only first 4 tags
+        if (i >= 4):
+            break
+        splitted = tags[i].split()
+        print(splitted)
+
+        #tag per space
+        for tag in splitted:
+            caption+= f"#{tag} "
+
+    #write into caption file
+    with open(caption_url, 'w') as f:
+        f.write(caption)
+
+
+
 #helper to create subtitle map for video
 def create_subtitle_map():
-    aeneas_task.audio_file_path_absolute = os.path.join(base_dir, "outputs/audio.AIFF")
+    aeneas_task.audio_file_path_absolute = audio_url
     aeneas_task.text_file_path_absolute = os.path.join(base_dir, "outputs/transcript.txt")
     aeneas_task.sync_map_file_path_absolute = os.path.join(base_dir, "outputs/subtitle_map.json")
 
@@ -56,15 +81,20 @@ def create_video(video_url: str):
     ffmpeg_command = [
         "ffmpeg", "-y",
         "-stream_loop", "-1",
-        "-i" , video_url,
+        "-ss", time_start,
+        "-i" , video_url, 
         "-i" , os.path.join(base_dir,"outputs/reddit_card.png"), 
         #5 second pause till audio starts to show reddit card
-        "-i" , os.path.join(base_dir,"outputs/audio.AIFF"),
-        "-filter_complex", f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',ass={os.path.join(base_dir,'outputs/subtitles.ass')}",
+        "-i" , audio_url,
+        "-filter_complex",
+        (
+            f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',ass={subtitle_url}"
+        ),
         #map takes audio stream from 1st idx, -shortest makes output length of shortest input
         "-map", "2:a", 
         "-c:v", "libx264",
         "-c:a", "aac", 
+        "-aspect", "9:16",
         "-shortest", 
         "-async", "1",
         os.path.join(base_dir,"outputs/video.mp4"),
@@ -115,7 +145,7 @@ def write_subtitles():
 
     script_style="[V4+ Styles]\n"
     script_style+="Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, Outline, Outline Colour, Alignment, Encoding\n"
-    script_style+="Style: Default,"+subtitle_font+","+subtitle_size+",&H00C8D6F8,&Hffffff,3,&Hffffff,5,0\n"
+    script_style+=f"Style: Default,{subtitle_font},{subtitle_size},{subtitle_color},&Hffffff,8,&Hffffff,5,0\n"
 
     script_events = "[Events]\nFormat: Start, End, Style, Text\n"
     #
@@ -123,7 +153,7 @@ def write_subtitles():
     script_events += get_event_string() 
     
     #write .ass file
-    with open(os.path.join(base_dir,"outputs/subtitles.ass"), 'w') as ass_file:
+    with open(subtitle_url, 'w') as ass_file:
         ass_file.write(script_info + script_style + script_events)
 
 # helper to get reddit card
@@ -176,12 +206,37 @@ def get_reddit_card():
     img = Image.open(os.path.join(base_dir,"outputs","reddit_card.png"))
     img = img.resize((550,300), Image.Resampling.LANCZOS)
     img.save(os.path.join(base_dir,"outputs","reddit_card.png"))
+
+def get_random_video_start(audio_url: str) -> str:
+    audio_file_length = librosa.get_duration(path=audio_url)
+    video_file_length = librosa.get_duration(path=video_url)
+
+    possible_time_sec : int = random.randint(0,int(video_file_length - audio_file_length))
+    mins = possible_time_sec//60
+    mins = f"{mins:02}"
+    secs = possible_time_sec%60
+    secs = f"{secs:02}"
+
+    return f"00:{mins}:{secs}.0"
+    
+    
     
 
-
-
 #the base dir so this works across everything
-base_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir : str = os.path.dirname(os.path.abspath(__file__))
+
+video_url : str = os.path.join(base_dir,"../assets/bgVideos/bballBoom2.mp4")
+audio_url : str = os.path.join(base_dir,"outputs/audio.wav")
+caption_url : str = os.path.join(base_dir,"outputs/caption.txt")
+subtitle_url : str = os.path.join(base_dir,"outputs/subtitles.ass")
+
+#config subtitles (font, size, color, strings)
+subtitle_font = "Phosphate"
+subtitle_size = "45"
+subtitle_color = "&HFDB5A3"
+
+end_of_reddit_card = None
+
 
 #configure praw
 reddit = praw.Reddit(
@@ -191,27 +246,20 @@ reddit = praw.Reddit(
     username = config.username,
     user_agent = config.user_agent,
 )
-
 #configure language_tool
 tool = language_tool_python.LanguageTool('en-US')
-
 #configure elevenlabs
 client = ElevenLabs(
   api_key=config.elevenlabs_api_key 
 )
-
 #configure pyttsx3
 engine = pyttsx3.init("nsss")
-engine.setProperty('rate', 120)    
-
+engine.setProperty('rate', 140)    
 #config task obj for aeneas
 config_string = u"task_language=eng|is_text_type=plain|os_task_file_format=json"
 aeneas_task = Task(config_string=config_string)
-
-#config subtitles (font, size, color, strings)
-subtitle_font = "Phosphate"
-subtitle_size = "45"
-end_of_reddit_card = None
+#configure YAKE, "tagger" because grabs keywords for tags in caption
+tagger = kw_extractor = KeywordExtractor(lan="en")
 
 
 
@@ -238,15 +286,20 @@ f = open(os.path.join(base_dir, "outputs/transcript.txt"), "w")
 f.write(transcript)
 f.close()
 
+#generate a caption based on keywords of text
+generate_caption(transcript)
+
 #tts, play, and save with eleven labs
-#audio = get_audio_file_elevenlabs(corrected_text)
-#play(audio)
-#save(audio, "output.mp3")
+audio = get_audio_file_elevenlabs(transcript)
+save(audio, audio_url)
 
 #tts with pyttsx3
-engine.say("a")
-engine.save_to_file(transcript, os.path.join(base_dir,'outputs/audio.AIFF'))
-engine.runAndWait()
+#engine.say("a")
+#engine.save_to_file(transcript, audio_url)
+#engine.runAndWait()
+
+#get random time to start video for variance using length of audio
+time_start : str = get_random_video_start(audio_url) 
 
 #use alligner to generate subtitle map with audio 
 create_subtitle_map()
@@ -255,4 +308,4 @@ create_subtitle_map()
 write_subtitles()
 
 #combine video and audio and subs
-create_video(os.path.join(base_dir,"../assets/bgVideos/bballBoom.mp4"))
+create_video(video_url)
