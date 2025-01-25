@@ -7,6 +7,7 @@
 - <em>You must create a config file with the appropriate credentials for the following APIs:</em>
   - PRAW
   - Elevenlabs API
+- Might have to change file paths for the background video (or add  your own in the assets folder in the root), so keep that in mind if it doesn't work. 
 
 ## Front End
 - Uses TSX React, so you'll need Node.js, and I believe it will work
