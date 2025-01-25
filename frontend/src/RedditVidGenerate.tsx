@@ -12,6 +12,9 @@ function RedditVidGenerate() {
     setVideoUrl: React.Dispatch<React.SetStateAction<string>>,
     apiUrl: string,
     url: string,
+    caption:string,
+    setCaption: React.Dispatch<React.SetStateAction<string>>,
+    options:string,
   ) => {
     e.preventDefault();
     setLoading(true);
@@ -20,11 +23,15 @@ function RedditVidGenerate() {
     if (videoUrl !== "") {
         setVideoUrl("");
     }
+    //same for caption
+    if (caption !== "") {
+      setCaption("");
+    }
 
     //submit POST req
     try {
-        //get binary video, blob
-        const resp: AxiosResponse = await axios.post(apiUrl, { url: url }, {
+        //we send a POST req, the data being the url submitted, then we wait to receive a blob in the response (a vid)
+        const resp: AxiosResponse = await axios.post(apiUrl, { url: url, options: options}, {
             responseType: 'blob'
         });
         
@@ -32,6 +39,12 @@ function RedditVidGenerate() {
         console.log(resp.headers)
         const videoBlob = new Blob([resp.data], {type: 'video/mp4'});
         setVideoUrl(URL.createObjectURL(videoBlob))
+
+        //get caption afterwards
+        const captionResp = await axios.get('http://localhost:8080/caption');
+        console.log(captionResp.data)
+        //set caption
+        setCaption(captionResp.data)
     } 
     catch (e) { 
         console.log(e) 

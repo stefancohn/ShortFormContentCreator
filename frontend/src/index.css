@@ -19,11 +19,11 @@
 }
 
 .blue-glass {
-    @apply bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl ring-1 ring-black/5 p-3 mb-10;
+    @apply bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl ring-1 ring-black/5 p-3;
 }
 
 .blue-button {
-    @apply font-bold bg-white/30 p-1 m-1 rounded-md text-white hover:bg-white hover:text-black transition ease-in duration-200 hover:scale-110
+    @apply font-bold bg-white/30 p-2 m-1 rounded-md text-white hover:bg-white hover:text-black transition ease-in duration-200 hover:scale-110
 }
 
 .text-0 {
