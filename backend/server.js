@@ -20,6 +20,7 @@ app.get("/api", (req, res) => {
 
 //handle reddit_video_api
 app.post("/reddit_video_api", (req, res) => {
+    //comes as a json object with a url field, so we deconstruct with {url} 
     const {url}  = req.body;
     console.log("Received URL:", url);
 
@@ -54,6 +55,17 @@ app.post("/reddit_video_api", (req, res) => {
 });
 
 //a subsequenet GET call to recieve the caption
+app.get("/caption", (req,res) => { 
+    //grab caption file and send it on over
+    const captionPath = path.join(__dirname, "../videoGenerator/outputs/caption.txt");
+    res.setHeader('Content-Type', 'text/plain');
+    res.sendFile(captionPath, err => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ message: "Error in generating video" });
+        }
+    },);
+});
 
 app.listen(8080, ()=>{
     console.log("Server is running on port 8080");
