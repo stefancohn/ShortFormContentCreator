@@ -1,5 +1,5 @@
 # Short-Form Content Creator
-
+If you are to contribute, please checkout your own branch, with the name being the feature you plan on implementing. Then push and send a PR. 
 ## Python Script 
 - This is the "app", actually creates the videos
 - Requires version 3.11, and a bunch of other packages that should be in requirements.txt. 
