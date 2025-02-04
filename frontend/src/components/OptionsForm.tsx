@@ -6,7 +6,7 @@ interface Props {
     };
 }
 
-function OptionsForm ({options }: Props) {
+function OptionsForm ({options}: Props) {
     const [collapse, setCollapse] = useState<boolean>(true);
     return (
     <>

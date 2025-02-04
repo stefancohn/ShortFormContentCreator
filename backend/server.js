@@ -45,7 +45,12 @@ app.post("/reddit_video_api", (req, res) => {
             const videoPath = path.join(__dirname, "../videoGenerator/outputs/video.mp4");
 
             res.setHeader('Content-Type', 'video/mp4');
-            res.sendFile(videoPath);
+            res.sendFile(videoPath, (err) => {
+                if (err) {
+                    console.error(err);
+                    res.status(500).json({ message: "Error in generating video" });
+                }
+            });
 
         } 
         else {

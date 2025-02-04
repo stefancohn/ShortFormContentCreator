@@ -1,5 +1,4 @@
 import { useState } from "react";
-import axios, { AxiosResponse } from "axios";
 import VideoLoadDisplay from "./VideoLoadDisplay";
 import OptionsForm from "./OptionsForm";
 import CaptionDisplay from "./CaptionDisplay";

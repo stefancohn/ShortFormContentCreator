@@ -26,6 +26,18 @@ from yake import KeywordExtractor
 # Makes use of aeneas to align subtitles with audio in video
 # All files created get sent to outputs directory
 
+#helper to list available voices with pytssx3
+def list_available_voices():
+    voices = engine.getProperty('voices')
+    for idx, voice in enumerate(voices):
+        print(f"Voice #{idx}")
+        print(f" - ID: {voice.id}")
+        print(f" - Name: {voice.name}")
+        print(f" - Languages: {voice.languages}")
+        print(f" - Gender: {voice.gender}")
+        print(f" - Age: {voice.age}\n")
+    return voices
+
 #helper that returns title, user, and body in dict
 def get_title_user_and_body(submission: praw.models.Submission) -> dict:
     return {
@@ -290,13 +302,14 @@ f.close()
 generate_caption(transcript)
 
 #tts, play, and save with eleven labs
-audio = get_audio_file_elevenlabs(transcript)
-save(audio, audio_url)
+#audio = get_audio_file_elevenlabs(transcript)
+#save(audio, audio_url)
 
 #tts with pyttsx3
-#engine.say("a")
-#engine.save_to_file(transcript, audio_url)
-#engine.runAndWait()
+engine.setProperty('voice', 'com.apple.voice.compact.en-GB.Daniel')
+engine.say("a")
+engine.save_to_file(transcript, audio_url)
+engine.runAndWait()
 
 #get random time to start video for variance using length of audio
 time_start : str = get_random_video_start(audio_url) 
