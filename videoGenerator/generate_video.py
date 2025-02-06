@@ -73,6 +73,15 @@ def generate_caption(text: str) -> str:
         for tag in splitted:
             caption+= f"#{tag} "
 
+    #get rid of duplicates in caption
+    no_dupes_caption = []
+    caption = caption.split()
+    for i in range(len(caption)):
+        if caption[i] not in no_dupes_caption:
+            no_dupes_caption.append(caption[i])
+    caption = " ".join(no_dupes_caption)
+    
+
     #write into caption file
     with open(caption_url, 'w') as f:
         f.write(caption)
