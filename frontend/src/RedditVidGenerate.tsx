@@ -10,7 +10,6 @@ function RedditVidGenerate() {
     setLoading: React.Dispatch<React.SetStateAction<boolean>>, 
     videoUrl: string,
     setVideoUrl: React.Dispatch<React.SetStateAction<string>>,
-    apiUrl: string,
     url: string,
     caption:string,
     setCaption: React.Dispatch<React.SetStateAction<string>>,
@@ -31,7 +30,7 @@ function RedditVidGenerate() {
     //submit POST req
     try {
         //we send a POST req, the data being the url submitted, then we wait to receive a blob in the response (a vid)
-        const resp: AxiosResponse = await axios.post(apiUrl, { url: url, options: options}, {
+        const resp: AxiosResponse = await axios.post("http://localhost:8080/reddit_video_api", { url: url, options: options}, {
             responseType: 'blob'
         });
         
@@ -54,6 +53,8 @@ function RedditVidGenerate() {
     } //set loading to false
   }
 
+  //
+  //FOR EXAMPLE PURPOSES
   const fetchAPI = async() => {
     const response = await axios.get('http://localhost:8080/api',)
     console.log(response)
@@ -63,6 +64,8 @@ function RedditVidGenerate() {
   useEffect(() => {
     fetchAPI();
   },[]);
+  //END OF EXAMPLE
+  //
 
   return (
     <>
