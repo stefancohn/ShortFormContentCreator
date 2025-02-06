@@ -9,10 +9,17 @@ interface Props {
         [key: string]: string[];
     }
 
+    onOptionsChange: (key: string, value: string) => void;
+
 }
 
-function OptionsForm ({inputOptions, selectOptions}: Props) {
+function OptionsForm ({inputOptions, selectOptions, onOptionsChange}: Props) {
     const [collapse, setCollapse] = useState<boolean>(true);
+
+    function handleOptionsChange(key: string, value: string) {
+        onOptionsChange(key, value);
+    }
+
     return (
     <>
         <div className="blue-glass flex flex-col justify-center items-center">
@@ -24,17 +31,17 @@ function OptionsForm ({inputOptions, selectOptions}: Props) {
 
                 {/* Iterate over all the inputs, place them in template */}
                 {Object.entries(inputOptions).map(([key, value]) => (
-                <div key={key} className={`${collapse ? "invisible opacity-0 h-0" : "opacity-100 h-8"} transition-all ease-in duration-1000 flex flex-col`}>
+                <div key={key} className={`${collapse ? "invisible opacity-0 h-0" : "opacity-100 h-8"} items-center transition-all ease-in duration-1000 flex flex-col`}>
                     <label>{key}</label>
-                    <input type={value} className="text-black"></input>
+                    <input type={value} className="text-black" onChange={(e) => handleOptionsChange(key, e.target.value)}></input>
                 </div>
                 ))}
 
                 {/* Iterate over all select options */}
                 {Object.entries(selectOptions).map(([key, value]) => (
-                <div className={`${collapse ? "opacity-0 h-0" : "opacity-100 h-12"} flex flex-col transition-all ease-in duration-1000`}>
+                <div className={`${collapse ? "opacity-0 h-0" : "opacity-100 h-12"} flex flex-col items-center transition-all ease-in duration-1000`}>
                     <label>{key}</label>
-                    <select className="text-black">
+                    <select className="text-black" onChange={(e) => handleOptionsChange(key, e.target.value)}>
                         {value.map((value) => (
                             <option>{value}</option>
                         ))}
