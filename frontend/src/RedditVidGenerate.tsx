@@ -20,7 +20,7 @@ function RedditVidGenerate() {
 
     //if user tries to generator another video, reset videoUrl
     if (videoUrl !== "") {
-        setVideoUrl("");
+      setVideoUrl("");
     }
     //same for caption
     if (caption !== "") {
@@ -29,27 +29,27 @@ function RedditVidGenerate() {
 
     //submit POST req
     try {
-        //we send a POST req, the data being the url submitted, then we wait to receive a blob in the response (a vid)
-        const resp: AxiosResponse = await axios.post("http://localhost:8080/reddit_video_api", { url: url, options: options}, {
-            responseType: 'blob'
-        });
-        
-        //when we receive response, load video
-        console.log(resp.headers)
-        const videoBlob = new Blob([resp.data], {type: 'video/mp4'});
-        setVideoUrl(URL.createObjectURL(videoBlob))
+      //we send a POST req, the data being the url submitted, then we wait to receive a blob in the response (a vid)
+      const resp: AxiosResponse = await axios.post("http://localhost:8080/reddit_video_api", { url: url, options: options}, {
+          responseType: 'blob'
+      });
+      
+      //when we receive response, load video
+      console.log(resp.headers)
+      const videoBlob = new Blob([resp.data], {type: 'video/mp4'});
+      setVideoUrl(URL.createObjectURL(videoBlob))
 
-        //get caption afterwards
-        const captionResp = await axios.get('http://localhost:8080/caption');
-        console.log(captionResp.data)
-        //set caption
-        setCaption(captionResp.data)
+      //get caption afterwards
+      const captionResp = await axios.get('http://localhost:8080/caption');
+      console.log(captionResp.data)
+      //set caption
+      setCaption(captionResp.data)
     } 
     catch (e) { 
-        console.log(e) 
+      console.log(e) 
     }  //catch error
     finally { 
-        setLoading(false) 
+      setLoading(false) 
     } //set loading to false
   }
 

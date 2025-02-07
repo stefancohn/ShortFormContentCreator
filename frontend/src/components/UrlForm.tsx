@@ -56,7 +56,7 @@ function UrlForm({ apiUrl, type, handleUrlSubmit }: Props) {
 
                 {/* Take in URL for reddit video and submit */}
                 <form className="blue-glass flex flex-col w-3/5 gap-2 justify-self-center items-center" 
-                onSubmit={(e) => { handleUrlSubmit(e, setLoading, videoUrl, setVideoUrl, apiUrl, url, caption, setCaption);}}
+                onSubmit={(e) => { handleUrlSubmit(e, setLoading, videoUrl, setVideoUrl, url, caption, setCaption);}}
                 >
                     <label className="w-full flex flex-col gap-2 items-center" >
                         <b>{type} URL:</b>

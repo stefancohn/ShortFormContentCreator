@@ -48,7 +48,6 @@ app.post("/reddit_video_api", (req, res) => {
             res.sendFile(videoPath, (err) => {
                 if (err) {
                     console.error(err);
-                    res.status(500).json({ message: "Error in generating video" });
                 }
             });
 
