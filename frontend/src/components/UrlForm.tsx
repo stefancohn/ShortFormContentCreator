@@ -4,25 +4,24 @@ import OptionsForm from "./OptionsForm";
 import CaptionDisplay from "./CaptionDisplay";
 
 interface Props {
-    apiUrl: string,
     type: string,
+
     handleUrlSubmit: (
         ...args: any[]
     ) => Promise<void>;
+
+    optionsState: { [key: string] : string }
+    setOptionsState: React.Dispatch<React.SetStateAction<{ [key: string]: string}>>;
 }
 
 
-function UrlForm({ apiUrl, type, handleUrlSubmit }: Props) {
+function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props) {
     //SETUP---------------
     //vars
     const [url, setUrl] = useState<string>('');
     const [videoUrl, setVideoUrl] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [caption, setCaption] = useState<string>('');
-    const [, setOptions] = useState<{[key : string] : string}>({
-        "Voice Rate" : "125", 
-        "Voice Software" : "PyTTS",
-    });
 
     const headerTitle : string = "Reddit Video Generator";
     const bodyText : string = `This is a Reddit Video Generator. It will generate a video with a Reddit card in the beginning.
@@ -48,15 +47,17 @@ function UrlForm({ apiUrl, type, handleUrlSubmit }: Props) {
 
                 <OptionsForm 
                     inputOptions={{"Voice Rate" : "number",}} 
-                    selectOptions={{"Voice Software": ["ElevenLabs", "PyTTS"]}}
+                    selectOptions={{"Voice Software": ["ElevenLabs", "PyTTS"], }}
                     onOptionsChange={(key, value) => {
-                        setOptions((prev) => ({...prev, [key]: value}));
+                        //uses function to properly change vals, i.e., takes array of all previous values, ad
+                        //only changes the one with the given key
+                        setOptionsState((prev) => ({...prev, [key]: value}));
                     }}
                 />
 
                 {/* Take in URL for reddit video and submit */}
                 <form className="blue-glass flex flex-col w-3/5 gap-2 justify-self-center items-center" 
-                onSubmit={(e) => { handleUrlSubmit(e, setLoading, videoUrl, setVideoUrl, url, caption, setCaption);}}
+                onSubmit={(e) => { handleUrlSubmit(e, setLoading, videoUrl, setVideoUrl, url, caption, setCaption, optionsState);}}
                 >
                     <label className="w-full flex flex-col gap-2 items-center" >
                         <b>{type} URL:</b>

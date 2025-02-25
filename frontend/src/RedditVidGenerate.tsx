@@ -1,9 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import axios, { AxiosResponse } from 'axios'
 import UrlForm from './components/UrlForm.tsx'
 import Navbar from './components/Navbar.tsx'
 
 function RedditVidGenerate() {
+  //pass to URL form, pass to OptionsForm
+  //default are 2 kvps
+  const [optionsState, setOptionsState] = useState<{ [key: string]: string }>({
+      "Voice Rate": "125",
+      "Voice Software": "PyTTS",
+  });
+
   //handle url form submission 
   const handleUrlSubmit = async (
     e: React.FormEvent<HTMLFormElement>, 
@@ -13,7 +20,7 @@ function RedditVidGenerate() {
     url: string,
     caption:string,
     setCaption: React.Dispatch<React.SetStateAction<string>>,
-    options:string,
+    optionsState: { [key: string] : string}
   ) => {
     e.preventDefault();
     setLoading(true);
@@ -30,7 +37,9 @@ function RedditVidGenerate() {
     //submit POST req
     try {
       //we send a POST req, the data being the url submitted, then we wait to receive a blob in the response (a vid)
-      const resp: AxiosResponse = await axios.post("http://localhost:8080/reddit_video_api", { url: url, options: options}, {
+      const resp: AxiosResponse = await axios.post("http://localhost:8080/reddit_video_api", { 
+        url: url, options: optionsState
+      }, {
           responseType: 'blob'
       });
       
@@ -55,6 +64,7 @@ function RedditVidGenerate() {
 
   //
   //FOR EXAMPLE PURPOSES
+
   const fetchAPI = async() => {
     const response = await axios.get('http://localhost:8080/api',)
     console.log(response)
@@ -64,13 +74,14 @@ function RedditVidGenerate() {
   useEffect(() => {
     fetchAPI();
   },[]);
+
   //END OF EXAMPLE
   //
 
   return (
     <>
       <Navbar/>
-      <UrlForm apiUrl={"http://localhost:8080/reddit_video_api"} type='Reddit' handleUrlSubmit={handleUrlSubmit}/>
+      <UrlForm type='Reddit' handleUrlSubmit={handleUrlSubmit} optionsState={optionsState} setOptionsState={setOptionsState}/>
     </>
   )
 }
