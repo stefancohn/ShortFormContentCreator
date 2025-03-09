@@ -31,10 +31,12 @@ function OptionsForm ({inputOptions, selectOptions, onOptionsChange}: Props) {
 
                 {/* Iterate over all the inputs, place them in template */}
                 {Object.entries(inputOptions).map(([key, value]) => (
-                <div key={key} className={`${collapse ? "invisible opacity-0 h-0" : "opacity-100 h-8"} items-center transition-all ease-in duration-1000 flex flex-col`}>
+
+                <div className={`${collapse ? "invisible opacity-0 h-0" : "opacity-100 h-8"} items-center transition-all ease-in duration-1000 flex flex-col`}>
                     <label>{key}</label>
-                    <input type={value} className="text-black" onChange={(e) => handleOptionsChange(key, e.target.value)}></input>
+                    <input type={value} className="text-black" onChange={(e) => handleOptionsChange(key, e.target.value)} defaultValue={125}></input>
                 </div>
+
                 ))}
 
                 {/* Iterate over all select options */}
