@@ -20,13 +20,13 @@ app.get("/api", (req, res) => {
 
 //handle reddit_video_api
 app.post("/reddit_video_api", (req, res) => {
-    //comes as a json object with a url field, so we deconstruct with {url} 
-    const {url}  = req.body;
+    //comes as a json object with a url field, so we deconstruct with 
+    const {url,options}  = req.body;
     console.log("Received URL:", url);
 
     //call python script
     const spawn = require("child_process").spawn;
-    const pythonProcess = spawn('python3',["../videoGenerator/generate_video.py", url]);
+    const pythonProcess = spawn('python3',["../videoGenerator/generate_video.py", url, JSON.stringify(options)]);
 
     //debug logs
     pythonProcess.stderr.on('data', (data) => {

@@ -44,10 +44,11 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
                     <h1 className="text-2xl font-bold underline">{headerTitle}</h1>
                     <p className="text-sm">{bodyText}</p>
                 </div>
-
+                
+                {/* Custom Options */}
                 <OptionsForm 
-                    inputOptions={{"Voice Rate" : "number",}} 
-                    selectOptions={{"Voice Software": ["ElevenLabs", "PyTTS"], }}
+                    inputOptions={{"Voice Rate (1-250)" : "number",}} 
+                    selectOptions={{"Voice Software": ["PyTTS", "ElevenLabs"], }}
                     onOptionsChange={(key, value) => {
                         //uses function to properly change vals, i.e., takes array of all previous values, ad
                         //only changes the one with the given key

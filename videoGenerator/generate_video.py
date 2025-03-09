@@ -3,6 +3,7 @@ import os
 import json
 import textwrap
 import sys
+import json
 from dataclasses import dataclass
 import random
 from typing import List
@@ -67,7 +68,6 @@ def generate_caption(text: str) -> str:
         if (i >= 4):
             break
         splitted = tags[i].split()
-        print(splitted)
 
         #tag per space
         for tag in splitted:
@@ -85,7 +85,6 @@ def generate_caption(text: str) -> str:
     #write into caption file
     with open(caption_url, 'w') as f:
         f.write(caption)
-
 
 
 #helper to create subtitle map for video
@@ -239,7 +238,19 @@ def get_random_video_start(audio_url: str) -> str:
     secs = f"{secs:02}"
 
     return f"00:{mins}:{secs}.0"
-    
+
+#outputs mp3 file of tts with appropriate software
+def create_audio(software : str) -> None :
+    #use elevelabs
+    if(software == "ElevenLabs"):
+        audio = get_audio_file_elevenlabs(transcript)
+        save(audio, audio_url)
+    #use pytts
+    else :
+        engine.setProperty('voice', 'com.apple.voice.compact.en-GB.Daniel')
+        engine.say("a")
+        engine.save_to_file(transcript, audio_url)
+        engine.runAndWait() 
     
     
 
@@ -258,6 +269,11 @@ subtitle_color = "&HFDB5A3"
 
 end_of_reddit_card = None
 
+#get options, and set up proper vars
+options = json.loads(sys.argv[2])
+voice_rate = int(options.get('Voice Rate', "125 "))
+tts_software = options.get('Voice Software')
+
 
 #configure praw
 reddit = praw.Reddit(
@@ -269,13 +285,16 @@ reddit = praw.Reddit(
 )
 #configure language_tool
 tool = language_tool_python.LanguageTool('en-US')
-#configure elevenlabs
-client = ElevenLabs(
-  api_key=config.elevenlabs_api_key 
-)
-#configure pyttsx3
-engine = pyttsx3.init("nsss")
-engine.setProperty('rate', 140)    
+#configure voice tts
+if (tts_software == "ElevenLabs"):
+    #elevenlabs
+    client = ElevenLabs(
+        api_key=config.elevenlabs_api_key 
+    )
+else:
+    #configure pyttsx3
+    engine = pyttsx3.init("nsss")
+    engine.setProperty('rate', voice_rate)    
 #config task obj for aeneas
 config_string = u"task_language=eng|is_text_type=plain|os_task_file_format=json"
 aeneas_task = Task(config_string=config_string)
@@ -310,15 +329,7 @@ f.close()
 #generate a caption based on keywords of text
 generate_caption(transcript)
 
-#tts, play, and save with eleven labs
-#audio = get_audio_file_elevenlabs(transcript)
-#save(audio, audio_url)
-
-#tts with pyttsx3
-engine.setProperty('voice', 'com.apple.voice.compact.en-GB.Daniel')
-engine.say("a")
-engine.save_to_file(transcript, audio_url)
-engine.runAndWait()
+create_audio(tts_software)
 
 #get random time to start video for variance using length of audio
 time_start : str = get_random_video_start(audio_url) 
