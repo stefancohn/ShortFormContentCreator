@@ -21,4 +21,4 @@ env/
 # Mac specific
 .DS_Store
 
-assets/bgVideos/
+videoGenerator/assets/bgVideos/

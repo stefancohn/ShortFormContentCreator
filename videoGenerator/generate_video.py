@@ -53,12 +53,13 @@ def get_audio_file_elevenlabs(text: str):
     audio = client.generate(
         text=text,
         voice="Brian",
-        model="eleven_multilingual_v2"
+        model="eleven_multilingual_v2",
     )
     return audio
 
 #write caption to file 
 def generate_caption(text: str) -> str:
+    #get keywords
     tags: List[str] = [keyword for keyword, score in tagger.extract_keywords(text)]
     
     caption = f"-\nMade With Short-Form Content Creator\nGame: BBall Boom\n#reddit #shorts #story #r #{post['subreddit']} "
@@ -71,17 +72,10 @@ def generate_caption(text: str) -> str:
 
         #tag per space
         for tag in splitted:
-            caption+= f"#{tag} "
-
-    #get rid of duplicates in caption
-    no_dupes_caption = []
-    caption = caption.split()
-    for i in range(len(caption)):
-        if caption[i] not in no_dupes_caption:
-            no_dupes_caption.append(caption[i])
-    caption = " ".join(no_dupes_caption)
+            #make sure no dupes!
+            if (tag not in caption):
+                caption+= f"#{tag} "
     
-
     #write into caption file
     with open(caption_url, 'w') as f:
         f.write(caption)
@@ -103,15 +97,17 @@ def create_video(video_url: str):
         "-stream_loop", "-1",
         "-ss", time_start,
         "-i" , video_url, 
-        "-i" , os.path.join(base_dir,"outputs/reddit_card.png"), 
-        #5 second pause till audio starts to show reddit card
+        "-i" , reddit_card_url, 
         "-i" , audio_url,
+        "-i" , ding_audio_url,
         "-filter_complex",
         (
-            f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',ass={subtitle_url}"
+            f"[3:a][2:a]concat=n=2:v=0:a=1[aud];"
+            f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',"
+            f"ass={subtitle_url}"
         ),
         #map takes audio stream from 1st idx, -shortest makes output length of shortest input
-        "-map", "2:a", 
+        "-map", "[aud]", 
         "-c:v", "libx264",
         "-c:a", "aac", 
         "-aspect", "9:16",
@@ -179,7 +175,7 @@ def write_subtitles():
 # helper to get reddit card
 def get_reddit_card():
     #grab img
-    img = Image.open(os.path.join(base_dir,"../assets/redditCard.png"))
+    img = Image.open(os.path.join(base_dir,"assets/redditCard.png"))
     draw = ImageDraw.Draw(img)
 
     #make fonts
@@ -240,11 +236,13 @@ def get_random_video_start(audio_url: str) -> str:
     return f"00:{mins}:{secs}.0"
 
 #outputs mp3 file of tts with appropriate software
-def create_audio(software : str) -> None :
+def create_audio(software : str, voice_rate) -> None :
     #use elevelabs
     if(software == "ElevenLabs"):
-        audio = get_audio_file_elevenlabs(transcript)
+
+        audio = get_audio_file_elevenlabs(text=transcript,)
         save(audio, audio_url)
+
     #use pytts
     else :
         engine.setProperty('voice', 'com.apple.voice.compact.en-GB.Daniel')
@@ -257,10 +255,12 @@ def create_audio(software : str) -> None :
 #the base dir so this works across everything
 base_dir : str = os.path.dirname(os.path.abspath(__file__))
 
-video_url : str = os.path.join(base_dir,"../assets/bgVideos/bballBoom2.mp4")
+video_url : str = os.path.join(base_dir,"assets/bgVideos/bballBoom2.mp4")
 audio_url : str = os.path.join(base_dir,"outputs/audio.wav")
 caption_url : str = os.path.join(base_dir,"outputs/caption.txt")
 subtitle_url : str = os.path.join(base_dir,"outputs/subtitles.ass")
+reddit_card_url: str = os.path.join(base_dir,"outputs/reddit_card.png")
+ding_audio_url: str = os.path.join(base_dir, "assets/ding.mp3")
 
 #config subtitles (font, size, color, strings)
 subtitle_font = "Phosphate"
@@ -329,7 +329,7 @@ f.close()
 #generate a caption based on keywords of text
 generate_caption(transcript)
 
-create_audio(tts_software)
+create_audio(tts_software, voice_rate)
 
 #get random time to start video for variance using length of audio
 time_start : str = get_random_video_start(audio_url) 

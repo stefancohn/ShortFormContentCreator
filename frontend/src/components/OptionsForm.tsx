@@ -11,9 +11,13 @@ interface Props {
 
     onOptionsChange: (key: string, value: string) => void;
 
+    optionsState: {[key: string]: string};
+
+    dependencyConfig? : any;
+
 }
 
-function OptionsForm ({inputOptions, selectOptions, onOptionsChange}: Props) {
+function OptionsForm ({inputOptions, selectOptions, onOptionsChange, optionsState, dependencyConfig}: Props) {
     const [collapse, setCollapse] = useState<boolean>(true);
 
     function handleOptionsChange(key: string, value: string) {
@@ -30,14 +34,29 @@ function OptionsForm ({inputOptions, selectOptions, onOptionsChange}: Props) {
             <div className={`${collapse ? "gap-0" : "gap-8"} flex flex-col justify-center items-center transition-all ease-in duration-1000`}>
 
                 {/* Iterate over all the inputs, place them in template */}
-                {Object.entries(inputOptions).map(([key, value]) => (
+                {Object.entries(inputOptions).map(([key, value]) => {
+                var dependsOn , condition, defVal;
 
-                <div className={`${collapse ? "invisible opacity-0 h-0" : "opacity-100 h-8"} items-center transition-all ease-in duration-1000 flex flex-col`}>
-                    <label>{key}</label>
-                    <input type={value} className="text-black" onChange={(e) => handleOptionsChange(key, e.target.value)} defaultValue={125}></input>
-                </div>
+                //if option has dependency rule 
+                if (dependencyConfig[key]) {
+                    //grab condition and nec vars
+                    dependsOn = dependencyConfig[key].dependsOn;
+                    condition = dependencyConfig[key].condition;
+                    defVal = dependencyConfig[key].defVal;
+                    
+                    //skip rendering if we don't meet condition
+                    if (!condition(optionsState[dependsOn])) {
+                        return null;
+                    }
+                }
 
-                ))}
+                //render as normal if we meet dependency
+                return(
+                    <div className={`${collapse ? "invisible opacity-0 h-0" : "opacity-100 h-8"} items-center transition-all ease-in duration-1000 flex flex-col`}>
+                        <label>{key}</label>
+                        <input type={value} className="text-black" onChange={(e) => handleOptionsChange(key, e.target.value)} defaultValue={defVal}></input>
+                    </div>)
+                })}
 
                 {/* Iterate over all select options */}
                 {Object.entries(selectOptions).map(([key, value]) => (
@@ -59,10 +78,3 @@ function OptionsForm ({inputOptions, selectOptions, onOptionsChange}: Props) {
     }
 
 export default OptionsForm;
-
-{/*<>
-    <div className="blue-glass flex flex-col justify-center items-center">
-        <button onClick={()=>setCollapse(!collapse)} className={`transition-all ease-in duration-1000`}>Options&nbsp;&nbsp;<strong>{collapse ? '+' : '-'}</strong></button>
-        <input type="number" className={`${collapse ? "h-0" : "h-8"} text-black transition-all ease-in duration-1000`}></input>
-    </div>
-</>*/}

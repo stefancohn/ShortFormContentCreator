@@ -31,6 +31,21 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
         Please enter a Reddit URL to generate a video.
     `;
 
+    const dependencyConfig: {
+        //TS annotation
+        [optionKey: string]: {
+            dependsOn: string;
+            condition: (dependentValue : string) => boolean;
+            defVal: number;
+        }
+    } = {
+        "Voice Rate (1-250)" : {
+            dependsOn: "Voice Software",
+            condition: (value: string) => value !== "ElevenLabs",
+            defVal: 140,
+        }
+    }
+
 
 
     //CONSTRUCTION OF COMPONENT---------------
@@ -50,10 +65,22 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
                     inputOptions={{"Voice Rate (1-250)" : "number",}} 
                     selectOptions={{"Voice Software": ["PyTTS", "ElevenLabs"], }}
                     onOptionsChange={(key, value) => {
+                        //some verification for voice rate
+                        if (key === "Voice Rate (1-250)") {
+                            const numVal = parseInt(value, 10);
+
+                            if (numVal < 1 || numVal > 250 ) {
+                                alert("Please enter a value between 1-250");
+                                return;
+                            }
+                        }
+
                         //uses function to properly change vals, i.e., takes array of all previous values, ad
                         //only changes the one with the given key
                         setOptionsState((prev) => ({...prev, [key]: value}));
                     }}
+                    optionsState={optionsState}
+                    dependencyConfig={dependencyConfig}
                 />
 
                 {/* Take in URL for reddit video and submit */}
@@ -86,3 +113,4 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
 }
 
 export default UrlForm
+
