@@ -53,12 +53,13 @@ def get_audio_file_elevenlabs(text: str):
     audio = client.generate(
         text=text,
         voice="Brian",
-        model="eleven_multilingual_v2"
+        model="eleven_multilingual_v2",
     )
     return audio
 
 #write caption to file 
 def generate_caption(text: str) -> str:
+    #get keywords
     tags: List[str] = [keyword for keyword, score in tagger.extract_keywords(text)]
     
     caption = f"-\nMade With Short-Form Content Creator\nGame: BBall Boom\n#reddit #shorts #story #r #{post['subreddit']} "
@@ -71,17 +72,10 @@ def generate_caption(text: str) -> str:
 
         #tag per space
         for tag in splitted:
-            caption+= f"#{tag} "
-
-    #get rid of duplicates in caption
-    no_dupes_caption = []
-    caption = caption.split()
-    for i in range(len(caption)):
-        if caption[i] not in no_dupes_caption:
-            no_dupes_caption.append(caption[i])
-    caption = " ".join(no_dupes_caption)
+            #make sure no dupes!
+            if (tag not in caption):
+                caption+= f"#{tag} "
     
-
     #write into caption file
     with open(caption_url, 'w') as f:
         f.write(caption)
@@ -103,7 +97,7 @@ def create_video(video_url: str):
         "-stream_loop", "-1",
         "-ss", time_start,
         "-i" , video_url, 
-        "-i" , os.path.join(base_dir,"outputs/reddit_card.png"), 
+        "-i" , reddit_card_url, 
         #5 second pause till audio starts to show reddit card
         "-i" , audio_url,
         "-filter_complex",
@@ -240,11 +234,13 @@ def get_random_video_start(audio_url: str) -> str:
     return f"00:{mins}:{secs}.0"
 
 #outputs mp3 file of tts with appropriate software
-def create_audio(software : str) -> None :
+def create_audio(software : str, voice_rate) -> None :
     #use elevelabs
     if(software == "ElevenLabs"):
-        audio = get_audio_file_elevenlabs(transcript)
+
+        audio = get_audio_file_elevenlabs(text=transcript,)
         save(audio, audio_url)
+
     #use pytts
     else :
         engine.setProperty('voice', 'com.apple.voice.compact.en-GB.Daniel')
@@ -261,6 +257,7 @@ video_url : str = os.path.join(base_dir,"../assets/bgVideos/bballBoom2.mp4")
 audio_url : str = os.path.join(base_dir,"outputs/audio.wav")
 caption_url : str = os.path.join(base_dir,"outputs/caption.txt")
 subtitle_url : str = os.path.join(base_dir,"outputs/subtitles.ass")
+reddit_card_url: str = os.path.join(base_dir,"outputs/reddit_card.png")
 
 #config subtitles (font, size, color, strings)
 subtitle_font = "Phosphate"
@@ -329,7 +326,7 @@ f.close()
 #generate a caption based on keywords of text
 generate_caption(transcript)
 
-create_audio(tts_software)
+create_audio(tts_software, voice_rate)
 
 #get random time to start video for variance using length of audio
 time_start : str = get_random_video_start(audio_url) 
