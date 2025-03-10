@@ -119,6 +119,9 @@ def create_video(video_url: str):
 
 # helper to parse json and return a string with events for .ass file
 def get_event_string() -> str :
+    #get ding offset
+    ding_duration = librosa.get_duration(path=ding_audio_url)
+
     #load json file
     with open (os.path.join(base_dir, "outputs/subtitle_map.json"), 'r') as file:
         data = json.load(file)
@@ -128,15 +131,15 @@ def get_event_string() -> str :
     data["fragments"][0]['lines'][0]=""
     #set end of reddit card time
     global end_of_reddit_card
-    end_of_reddit_card = data["fragments"][0]['end']
+    end_of_reddit_card = float(data["fragments"][0]['end']) + ding_duration
 
     ret_val = ""
 
     #iterate over all time stamps in aeneas
     for fragment in data["fragments"] :
         #add ___ offset to all timestamps for beginning card
-        fragment["begin"] = str(float(fragment["begin"]))
-        fragment["end"] = str(float(fragment["end"]))
+        fragment["begin"] = str(float(fragment["begin"]) + ding_duration)
+        fragment["end"] = str(float(fragment["end"]) + ding_duration)
 
         # cast to a string, secs are formatted as 00:00
         # and minutes are formated as 00
