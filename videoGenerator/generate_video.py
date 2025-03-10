@@ -98,14 +98,16 @@ def create_video(video_url: str):
         "-ss", time_start,
         "-i" , video_url, 
         "-i" , reddit_card_url, 
-        #5 second pause till audio starts to show reddit card
         "-i" , audio_url,
+        "-i" , ding_audio_url,
         "-filter_complex",
         (
-            f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',ass={subtitle_url}"
+            f"[3:a][2:a]concat=n=2:v=0:a=1[aud];"
+            f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',"
+            f"ass={subtitle_url}"
         ),
         #map takes audio stream from 1st idx, -shortest makes output length of shortest input
-        "-map", "2:a", 
+        "-map", "[aud]", 
         "-c:v", "libx264",
         "-c:a", "aac", 
         "-aspect", "9:16",
@@ -173,7 +175,7 @@ def write_subtitles():
 # helper to get reddit card
 def get_reddit_card():
     #grab img
-    img = Image.open(os.path.join(base_dir,"../assets/redditCard.png"))
+    img = Image.open(os.path.join(base_dir,"assets/redditCard.png"))
     draw = ImageDraw.Draw(img)
 
     #make fonts
@@ -253,11 +255,12 @@ def create_audio(software : str, voice_rate) -> None :
 #the base dir so this works across everything
 base_dir : str = os.path.dirname(os.path.abspath(__file__))
 
-video_url : str = os.path.join(base_dir,"../assets/bgVideos/bballBoom2.mp4")
+video_url : str = os.path.join(base_dir,"assets/bgVideos/bballBoom2.mp4")
 audio_url : str = os.path.join(base_dir,"outputs/audio.wav")
 caption_url : str = os.path.join(base_dir,"outputs/caption.txt")
 subtitle_url : str = os.path.join(base_dir,"outputs/subtitles.ass")
 reddit_card_url: str = os.path.join(base_dir,"outputs/reddit_card.png")
+ding_audio_url: str = os.path.join(base_dir, "assets/ding.mp3")
 
 #config subtitles (font, size, color, strings)
 subtitle_font = "Phosphate"
