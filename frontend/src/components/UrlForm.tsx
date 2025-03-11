@@ -66,7 +66,7 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
                         "Voice Rate (1-250)" : "number",
                     }} 
                     selectOptions={{
-                        "Voice Software": ["PyTTS", "ElevenLabs", "pyt2s"], 
+                        "Voice Software": ["Low Quality", "Medium Quality", "AI-Powered",], 
                         "Seconds For Each Part" : ["Only one part", "60", "120", "180", "240"]
                     }}
                     onOptionsChange={(key, value) => {

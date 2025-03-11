@@ -74,6 +74,13 @@ def generate_caption(text: str) -> str:
     with open(caption_url, 'w') as f:
         f.write(caption)
 
+#helper to create transcript
+def create_body_string(text):
+    #add line breaks so aeneas givees time stamp for each word
+    text = text.split()
+    text = "\n".join(text)
+
+    return text
 
 #helper to create subtitle map for video
 def create_subtitle_map():
@@ -237,7 +244,7 @@ def get_random_video_start(audio_url: str) -> str:
 #outputs mp3 file of tts with appropriate software
 def create_audio(software : str, voice_rate) -> None :
     #use elevelabs
-    if(software == "ElevenLabs"):
+    if(software == "AI-Powered"):
         audio = client.generate(
             text=transcript,
             voice="Brian",
@@ -246,7 +253,7 @@ def create_audio(software : str, voice_rate) -> None :
         save(audio, audio_url)
 
     #use pyt2s
-    elif(software == "pyt2s") :
+    elif(software == "Medium Quality") :
         data = acapela.requestTTS(text=transcript, voice='darius_nt22k')
         with open(audio_url, 'wb') as file :
             file.write(data)
@@ -327,9 +334,7 @@ generate_reddit_card()
 
 #run language_tool on body
 corrected_text = tool.correct(post['body'])
-#add line breaks so aeneas givees time stamp for each word
-corrected_text = corrected_text.split()
-corrected_text = "\n".join(corrected_text)
+corrected_text = create_body_string(corrected_text)
 
 #concenate all relevant fields of post into one string
 transcript = post['title'] + ",,\n\n"
