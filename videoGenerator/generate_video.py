@@ -19,6 +19,7 @@ from aeneas.task import Task
 from PIL import Image, ImageDraw, ImageFont
 import librosa
 from yake import KeywordExtractor
+from pyt2s.services import acapela
 
 # Requires Python 3.11.0
 
@@ -39,6 +40,7 @@ def list_available_voices():
         print(f" - Age: {voice.age}\n")
     return voices
 
+
 #helper that returns title, user, and body in dict
 def get_title_user_and_body(submission: praw.models.Submission) -> dict:
     return {
@@ -48,14 +50,6 @@ def get_title_user_and_body(submission: praw.models.Submission) -> dict:
         "body" : submission.selftext
     }
 
-#helper to return audio file with eleven labs
-def get_audio_file_elevenlabs(text: str):
-    audio = client.generate(
-        text=text,
-        voice="Brian",
-        model="eleven_multilingual_v2",
-    )
-    return audio
 
 #write caption to file 
 def generate_caption(text: str) -> str:
@@ -102,8 +96,11 @@ def create_video(video_url: str):
         "-i" , ding_audio_url,
         "-filter_complex",
         (
+            #concat ding then tts file
             f"[3:a][2:a]concat=n=2:v=0:a=1[aud];"
+            #add reddit card overlay
             f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',"
+            #add subtitle overlay
             f"ass={subtitle_url}"
         ),
         #map takes audio stream from 1st idx, -shortest makes output length of shortest input
@@ -176,7 +173,7 @@ def write_subtitles():
         ass_file.write(script_info + script_style + script_events)
 
 # helper to get reddit card
-def get_reddit_card():
+def generate_reddit_card():
     #grab img
     img = Image.open(os.path.join(base_dir,"assets/redditCard.png"))
     draw = ImageDraw.Draw(img)
@@ -227,10 +224,9 @@ def get_reddit_card():
     img.save(os.path.join(base_dir,"outputs","reddit_card.png"))
 
 def get_random_video_start(audio_url: str) -> str:
-    audio_file_length = librosa.get_duration(path=audio_url)
     video_file_length = librosa.get_duration(path=video_url)
 
-    possible_time_sec : int = random.randint(0,int(video_file_length - audio_file_length))
+    possible_time_sec : int = random.randint(0,int(video_file_length - tts_audio_length))
     mins = possible_time_sec//60
     mins = f"{mins:02}"
     secs = possible_time_sec%60
@@ -242,9 +238,18 @@ def get_random_video_start(audio_url: str) -> str:
 def create_audio(software : str, voice_rate) -> None :
     #use elevelabs
     if(software == "ElevenLabs"):
-
-        audio = get_audio_file_elevenlabs(text=transcript,)
+        audio = client.generate(
+            text=transcript,
+            voice="Brian",
+            model="eleven_multilingual_v2",
+        )
         save(audio, audio_url)
+
+    #use pyt2s
+    elif(software == "pyt2s") :
+        data = acapela.requestTTS(text=transcript, voice='darius_nt22k')
+        with open(audio_url, 'wb') as file :
+            file.write(data)
 
     #use pytts
     else :
@@ -252,6 +257,9 @@ def create_audio(software : str, voice_rate) -> None :
         engine.say("a")
         engine.save_to_file(transcript, audio_url)
         engine.runAndWait() 
+
+    global tts_audio_length
+    tts_audio_length = librosa.get_duration(path=audio_url)
     
     
 
@@ -267,15 +275,18 @@ ding_audio_url: str = os.path.join(base_dir, "assets/ding.mp3")
 
 #config subtitles (font, size, color, strings)
 subtitle_font = "Phosphate"
-subtitle_size = "45"
+subtitle_size = "30"
 subtitle_color = "&HFDB5A3"
 
 end_of_reddit_card = None
+tts_audio_length = 0
 
 #get options, and set up proper vars
 options = json.loads(sys.argv[2])
-voice_rate = int(options.get('Voice Rate', "125 "))
-tts_software = options.get('Voice Software')
+voice_rate = int(options.get('Voice Rate (1-250)', "125"))
+tts_software = options.get('Voice Software',"")
+#parse cutoff length as float, else as None 
+cutoff_length = float(options.get('Seconds For Each Part',)) if (options.get('Seconds For Each Part') != "Only one part") else None
 
 
 #configure praw
@@ -312,7 +323,7 @@ url: str = sys.argv[1]
 submission: praw.models.Submission = reddit.submission(url=url)
 post = get_title_user_and_body(submission)
 
-get_reddit_card()
+generate_reddit_card()
 
 #run language_tool on body
 corrected_text = tool.correct(post['body'])
@@ -334,14 +345,22 @@ generate_caption(transcript)
 
 create_audio(tts_software, voice_rate)
 
-#get random time to start video for variance using length of audio
-time_start : str = get_random_video_start(audio_url) 
+if (cutoff_length == None) :
 
-#use alligner to generate subtitle map with audio 
-create_subtitle_map()
+    #get random time to start video for variance using length of audio
+    time_start : str = get_random_video_start(audio_url) 
 
-#generate subtitles and set end of reddit card
-write_subtitles()
+    #use alligner to generate subtitle map with audio 
+    create_subtitle_map()
 
-#combine video and audio and subs
-create_video(video_url)
+    #generate subtitles and set end of reddit card
+    write_subtitles()
+
+    #combine video and audio and subs
+    create_video(video_url)
+
+# have a diff process if video splitting
+else :
+    parts = tts_audio_length
+    print(parts)
+

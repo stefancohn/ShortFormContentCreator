@@ -43,7 +43,7 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
             dependsOn: "Voice Software",
             condition: (value: string) => value !== "ElevenLabs",
             defVal: 140,
-        }
+        },
     }
 
 
@@ -62,8 +62,13 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
                 
                 {/* Custom Options */}
                 <OptionsForm 
-                    inputOptions={{"Voice Rate (1-250)" : "number",}} 
-                    selectOptions={{"Voice Software": ["PyTTS", "ElevenLabs"], }}
+                    inputOptions={{
+                        "Voice Rate (1-250)" : "number",
+                    }} 
+                    selectOptions={{
+                        "Voice Software": ["PyTTS", "ElevenLabs", "pyt2s"], 
+                        "Seconds For Each Part" : ["Only one part", "60", "120", "180", "240"]
+                    }}
                     onOptionsChange={(key, value) => {
                         //some verification for voice rate
                         if (key === "Voice Rate (1-250)") {

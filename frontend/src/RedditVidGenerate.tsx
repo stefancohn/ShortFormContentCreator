@@ -7,8 +7,9 @@ function RedditVidGenerate() {
   //pass to URL form, pass to OptionsForm
   //default are 2 kvps
   const [optionsState, setOptionsState] = useState<{ [key: string]: string }>({
-      "Voice Rate": "125",
+      "Voice Rate (1-250)": "125",
       "Voice Software": "PyTTS",
+      "Seconds For Each Part" : "Only one part",
   });
 
   //handle url form submission 
