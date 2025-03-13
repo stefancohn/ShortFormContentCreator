@@ -12,7 +12,7 @@ import config
 import praw
 import language_tool_python
 import pyttsx3
-from elevenlabs import play,save
+from elevenlabs import save
 from elevenlabs.client import ElevenLabs
 from aeneas.executetask import ExecuteTask
 from aeneas.task import Task
@@ -83,9 +83,9 @@ def create_body_string(text):
     return text
 
 #helper to create subtitle map for video
-def create_subtitle_map():
+def create_subtitle_map(audio_url, text_url):
     aeneas_task.audio_file_path_absolute = audio_url
-    aeneas_task.text_file_path_absolute = os.path.join(base_dir, "outputs/transcript.txt")
+    aeneas_task.text_file_path_absolute = text_url
     aeneas_task.sync_map_file_path_absolute = os.path.join(base_dir, "outputs/subtitle_map.json")
 
     ExecuteTask(aeneas_task).execute()
@@ -99,19 +99,17 @@ def create_video(video_url: str):
         "-ss", time_start,
         "-i" , video_url, 
         "-i" , reddit_card_url, 
-        "-i" , audio_url,
-        "-i" , ding_audio_url,
+        "-i" , final_audio_url,
         "-filter_complex",
         (
-            #concat ding then tts file
-            f"[3:a][2:a]concat=n=2:v=0:a=1[aud];"
             #add reddit card overlay
             f"[0:v][1:v]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:enable='between(t,0,{end_of_reddit_card})',"
             #add subtitle overlay
-            f"ass={subtitle_url}"
+            f"ass={subtitle_url};"
+            #label audio stream as aud
         ),
         #map takes audio stream from 1st idx, -shortest makes output length of shortest input
-        "-map", "[aud]", 
+        "-map", "2", 
         "-c:v", "libx264",
         "-c:a", "aac", 
         "-aspect", "9:16",
@@ -123,8 +121,6 @@ def create_video(video_url: str):
 
 # helper to parse json and return a string with events for .ass file
 def get_event_string() -> str :
-    #get ding offset
-    ding_duration = librosa.get_duration(path=ding_audio_url)
 
     #load json file
     with open (os.path.join(base_dir, "outputs/subtitle_map.json"), 'r') as file:
@@ -135,15 +131,15 @@ def get_event_string() -> str :
     data["fragments"][0]['lines'][0]=""
     #set end of reddit card time
     global end_of_reddit_card
-    end_of_reddit_card = float(data["fragments"][0]['end']) + ding_duration
+    end_of_reddit_card = float(data["fragments"][0]['end'])
 
     ret_val = ""
 
     #iterate over all time stamps in aeneas
     for fragment in data["fragments"] :
         #add ___ offset to all timestamps for beginning card
-        fragment["begin"] = str(float(fragment["begin"]) + ding_duration)
-        fragment["end"] = str(float(fragment["end"]) + ding_duration)
+        fragment["begin"] = str(float(fragment["begin"]))
+        fragment["end"] = str(float(fragment["end"]))
 
         # cast to a string, secs are formatted as 00:00
         # and minutes are formated as 00
@@ -242,7 +238,7 @@ def get_random_video_start(audio_url: str) -> str:
     return f"00:{mins}:{secs}.0"
 
 #outputs mp3 file of tts with appropriate software
-def create_audio(software : str, voice_rate) -> None :
+def create_audio(software : str, text: str, save_path: str) -> None :
     #use elevelabs
     if(software == "AI-Powered"):
         audio = client.generate(
@@ -250,23 +246,49 @@ def create_audio(software : str, voice_rate) -> None :
             voice="Brian",
             model="eleven_multilingual_v2",
         )
-        save(audio, audio_url)
+        save(text, save_path)
 
     #use pyt2s
     elif(software == "Medium Quality") :
-        data = acapela.requestTTS(text=transcript, voice='darius_nt22k')
-        with open(audio_url, 'wb') as file :
+        data = acapela.requestTTS(text=text, voice='darius_nt22k')
+        with open(save_path, 'wb') as file :
             file.write(data)
 
     #use pytts
     else :
         engine.setProperty('voice', 'com.apple.voice.compact.en-GB.Daniel')
         engine.say("a")
-        engine.save_to_file(transcript, audio_url)
+        engine.save_to_file(text, save_path)
         engine.runAndWait() 
 
-    global tts_audio_length
-    tts_audio_length = librosa.get_duration(path=audio_url)
+#concatenate a list of audios together into one file, order of 
+#input list matters!
+def concatenate_audio(filepaths : List, output_url: str):
+    #format input_args
+    input_args=[]
+    for path in filepaths:
+        #create flattened list
+        input_args.extend(["-i", path])
+
+    #format the filter_complex, i.e.
+    #[0:a:0]...concat=n=?v=0a=1[out]
+    filter_complex = "".join(f"[{i}:a]" for i in range(len(filepaths)))
+    filter_complex+= f"concat=n={len(filepaths)}:v=0:a=1[out]"
+
+    #create ffmpeg cmd, run it
+    command=[
+        "ffmpeg", "-y",
+        *input_args,
+        "-filter_complex", filter_complex,
+        "-map", "[out]",
+        output_url
+    ]
+    subprocess.run(command)
+
+    #delete filepaths file
+    #os.remove(file_list_path)
+
+
     
     
 
@@ -274,10 +296,12 @@ def create_audio(software : str, voice_rate) -> None :
 base_dir : str = os.path.dirname(os.path.abspath(__file__))
 
 video_url : str = os.path.join(base_dir,"assets/bgVideos/bballBoom2.mp4")
-audio_url : str = os.path.join(base_dir,"outputs/audio.wav")
+tts_audio_url : str = os.path.join(base_dir,"outputs/tts_audio.wav")
+final_audio_url : str = os.path.join(base_dir, "outputs/final_audio.wav")
 caption_url : str = os.path.join(base_dir,"outputs/caption.txt")
 subtitle_url : str = os.path.join(base_dir,"outputs/subtitles.ass")
 reddit_card_url: str = os.path.join(base_dir,"outputs/reddit_card.png")
+output_video_url : str = os.path.join(base_dir, "outputs/video.mp4")
 ding_audio_url: str = os.path.join(base_dir, "assets/ding.mp3")
 
 #config subtitles (font, size, color, strings)
@@ -292,8 +316,7 @@ tts_audio_length = 0
 options = json.loads(sys.argv[2])
 voice_rate = int(options.get('Voice Rate (1-250)', "125"))
 tts_software = options.get('Voice Software',"")
-#parse cutoff length as float, else as None 
-cutoff_length = float(options.get('Seconds For Each Part',)) if (options.get('Seconds For Each Part') != "Only one part") else None
+parts = int(options.get('Number of Parts',))
 
 
 #configure praw
@@ -348,15 +371,17 @@ f.close()
 #generate a caption based on keywords of text
 generate_caption(transcript)
 
-create_audio(tts_software, voice_rate)
-
-if (cutoff_length == None) :
+if (parts == 1) :
+    #create audio, concat with ding, get length of audio
+    create_audio(software=tts_software, text=transcript, save_path=tts_audio_url)
+    concatenate_audio([ding_audio_url, tts_audio_url], final_audio_url)
+    final_audio_length = librosa.get_duration(path=final_audio_url)
 
     #get random time to start video for variance using length of audio
-    time_start : str = get_random_video_start(audio_url) 
+    time_start : str = get_random_video_start(final_audio_url) 
 
     #use alligner to generate subtitle map with audio 
-    create_subtitle_map()
+    create_subtitle_map(audio_url=final_audio_url, text_url=os.path.join(base_dir, "outputs/transcript.txt"))
 
     #generate subtitles and set end of reddit card
     write_subtitles()
@@ -366,6 +391,30 @@ if (cutoff_length == None) :
 
 # have a diff process if video splitting
 else :
-    parts = tts_audio_length
-    print(parts)
 
+    #record n save tts of "follow for i"
+    for i in range(0, parts-1):
+        follow_save_url : str = os.path.join(base_dir,f"outputs/follow{i}.wav")
+        sequel_text = f"Follow for part {i+2}"
+        create_audio(software=tts_software, text=sequel_text, save_path=follow_save_url)
+
+    title_audio_url = os.path.join(base_dir,"outputs/title_audio.wav")
+    #record just the title part
+    create_audio(tts_software, post['title'], title_audio_url)
+
+    #now we must find out stop points
+    #once we find stop point, store it 
+    stop_points = []
+    corrected_text = corrected_text.split()
+    stop_point = int(len(corrected_text)/parts)
+    for i in range(0, parts-1):
+        while (True):
+            #must find natural stop; when we find period
+            if "." in corrected_text[stop_point*(i+1)]:
+                stop_points.append(stop_point)
+                break
+            else:
+                if stop_point < len(corrected_text):
+                    stop_point += 1
+                else:
+                    exit(0)

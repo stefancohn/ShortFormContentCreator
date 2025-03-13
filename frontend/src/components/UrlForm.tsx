@@ -67,7 +67,7 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
                     }} 
                     selectOptions={{
                         "Voice Software": ["Low Quality", "Medium Quality", "AI-Powered",], 
-                        "Seconds For Each Part" : ["Only one part", "60", "120", "180", "240"]
+                        "Number of Parts" : ["1", "2", "3",]
                     }}
                     onOptionsChange={(key, value) => {
                         //some verification for voice rate

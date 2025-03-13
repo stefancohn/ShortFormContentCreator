@@ -9,7 +9,7 @@ function RedditVidGenerate() {
   const [optionsState, setOptionsState] = useState<{ [key: string]: string }>({
       "Voice Rate (1-250)": "125",
       "Voice Software": "PyTTS",
-      "Seconds For Each Part" : "Only one part",
+      "Number of Parts" : "1",
   });
 
   //handle url form submission 
