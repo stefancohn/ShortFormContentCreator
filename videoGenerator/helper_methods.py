@@ -19,6 +19,13 @@ import librosa
 from yake import KeywordExtractor
 from pyt2s.services import acapela
 
+#Helper Methods
+
+#Used in Generate_Video
+#Includes voice commands, audio generation,
+#video generator, etc etc
+
+
 base_dir : str = os.path.dirname(os.path.abspath(__file__))
 
 #helper to list available voices with pytssx3
@@ -228,8 +235,10 @@ def generate_reddit_card(title, subreddit, user):
     img = img.resize((550,300), Image.Resampling.LANCZOS)
     img.save(os.path.join(base_dir,"outputs","reddit_card.png"))
 
-def get_random_video_start(video_url: str, audio_length) -> str:
+#grab a random place in the gameplay to start from
+def get_random_video_start(video_url: str, audio_url) -> str:
     video_file_length = librosa.get_duration(path=video_url)
+    audio_length = librosa.get_duration(path=audio_url)
 
     possible_time_sec : int = random.randint(0,int(video_file_length - audio_length))
     mins = possible_time_sec//60
