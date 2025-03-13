@@ -2,7 +2,6 @@ import subprocess
 import os
 import json
 import textwrap
-import sys
 import json
 from dataclasses import dataclass
 import random
@@ -10,7 +9,6 @@ from typing import List
 import config
 
 import praw
-import language_tool_python
 import pyttsx3
 from elevenlabs import save
 from elevenlabs.client import ElevenLabs
@@ -21,15 +19,12 @@ import librosa
 from yake import KeywordExtractor
 from pyt2s.services import acapela
 
-# Requires Python 3.11.0
-
-# This script takes a reddit post url, parses it,
-# corrects it, then creates a video along with subtitles
-# Makes use of aeneas to align subtitles with audio in video
-# All files created get sent to outputs directory
+base_dir : str = os.path.dirname(os.path.abspath(__file__))
 
 #helper to list available voices with pytssx3
-def list_available_voices():
+def list_pytts_voices():
+    engine = pyttsx3.init("nsss")
+
     voices = engine.getProperty('voices')
     for idx, voice in enumerate(voices):
         print(f"Voice #{idx}")
@@ -52,11 +47,13 @@ def get_title_user_and_body(submission: praw.models.Submission) -> dict:
 
 
 #write caption to file 
-def generate_caption(text: str) -> str:
+def generate_caption(text: str, subreddit, output_url: str) -> str:
+    tagger = kw_extractor = KeywordExtractor(lan="en")
+
     #get keywords
     tags: List[str] = [keyword for keyword, score in tagger.extract_keywords(text)]
     
-    caption = f"-\nMade With Short-Form Content Creator\nGame: BBall Boom\n#reddit #shorts #story #r #{post['subreddit']} "
+    caption = f"-\nMade With Short-Form Content Creator\nGame: BBall Boom\n#reddit #shorts #story #r #{subreddit} "
 
     for i in range(len(tags)):
         # want only first 4 tags
@@ -71,7 +68,7 @@ def generate_caption(text: str) -> str:
                 caption+= f"#{tag} "
     
     #write into caption file
-    with open(caption_url, 'w') as f:
+    with open(output_url, 'w') as f:
         f.write(caption)
 
 #helper to create transcript
@@ -83,23 +80,28 @@ def create_body_string(text):
     return text
 
 #helper to create subtitle map for video
-def create_subtitle_map(audio_url, text_url):
+def create_subtitle_map(audio_url, text_url, output_url):
+    config_string = u"task_language=eng|is_text_type=plain|os_task_file_format=json"
+    aeneas_task = Task(config_string=config_string)
+
     aeneas_task.audio_file_path_absolute = audio_url
     aeneas_task.text_file_path_absolute = text_url
-    aeneas_task.sync_map_file_path_absolute = os.path.join(base_dir, "outputs/subtitle_map.json")
+    aeneas_task.sync_map_file_path_absolute = output_url #os.path.join(base_dir, "outputs/subtitle_map.json")
 
     ExecuteTask(aeneas_task).execute()
     aeneas_task.output_sync_map_file()
 
 #helper to use ffmpeg to create video
-def create_video(video_url: str):
+def create_video(video_url, video_start, audio_url, subtitle_url):
+    reddit_card_url = os.path.join(base_dir,"outputs/reddit_card.png")
+
     ffmpeg_command = [
         "ffmpeg", "-y",
         "-stream_loop", "-1",
-        "-ss", time_start,
+        "-ss", video_start,
         "-i" , video_url, 
         "-i" , reddit_card_url, 
-        "-i" , final_audio_url,
+        "-i" , audio_url,
         "-filter_complex",
         (
             #add reddit card overlay
@@ -158,7 +160,7 @@ def get_event_string() -> str :
     return(ret_val)
 
 # Create .ass file for subtitles
-def write_subtitles():
+def write_subtitles(subtitle_font, subtitle_size, subtitle_color, output_url):
     #set up boiler plate .ass info
     script_info="[Script Info]\nPlayResX: 600\nPlayResY: 600\nWrapStyle: 1\n"
 
@@ -172,11 +174,11 @@ def write_subtitles():
     script_events += get_event_string() 
     
     #write .ass file
-    with open(subtitle_url, 'w') as ass_file:
+    with open(output_url, 'w') as ass_file:
         ass_file.write(script_info + script_style + script_events)
 
 # helper to get reddit card
-def generate_reddit_card():
+def generate_reddit_card(title, subreddit, user):
     #grab img
     img = Image.open(os.path.join(base_dir,"assets/redditCard.png"))
     draw = ImageDraw.Draw(img)
@@ -199,14 +201,14 @@ def generate_reddit_card():
     # Add texts to image
     draw.multiline_text( #subreddit
         (header_x,subreddit_y), 
-        f"r/{post['subreddit']}", 
+        f"r/{subreddit}", 
         font=subreddit_font, 
         fill="black",
         align="left",
     )
     draw.multiline_text( #user
         (header_x,user_y), 
-        f"u/{post['user']}", 
+        f"u/{user}", 
         font=user_font, 
         fill="gray",
         align="left",
@@ -214,7 +216,7 @@ def generate_reddit_card():
     #wrapped text that goes down
     y_offset = body_y
     spacing =  (title_font.getbbox("SSD")[3]-title_font.getbbox("SSD")[1]) + 17
-    for line in textwrap.wrap(post['title'], width=box_width):
+    for line in textwrap.wrap(title, width=box_width):
         draw.text((body_x, y_offset), line, font=title_font, fill="black")
         y_offset += (spacing) + 17
 
@@ -226,10 +228,10 @@ def generate_reddit_card():
     img = img.resize((550,300), Image.Resampling.LANCZOS)
     img.save(os.path.join(base_dir,"outputs","reddit_card.png"))
 
-def get_random_video_start(video_url: str) -> str:
+def get_random_video_start(video_url: str, audio_length) -> str:
     video_file_length = librosa.get_duration(path=video_url)
 
-    possible_time_sec : int = random.randint(0,int(video_file_length - tts_audio_length))
+    possible_time_sec : int = random.randint(0,int(video_file_length - audio_length))
     mins = possible_time_sec//60
     mins = f"{mins:02}"
     secs = possible_time_sec%60
@@ -241,12 +243,17 @@ def get_random_video_start(video_url: str) -> str:
 def create_audio(software : str, text: str, save_path: str) -> None :
     #use elevelabs
     if(software == "AI-Powered"):
+        #set up client
+        client = ElevenLabs(
+            api_key=config.elevenlabs_api_key 
+        )
+
         audio = client.generate(
-            text=transcript,
+            text=text,
             voice="Brian",
             model="eleven_multilingual_v2",
         )
-        save(text, save_path)
+        save(audio, save_path)
 
     #use pyt2s
     elif(software == "Medium Quality") :
@@ -256,6 +263,10 @@ def create_audio(software : str, text: str, save_path: str) -> None :
 
     #use pytts
     else :
+        #configure pyttsx3
+        engine = pyttsx3.init("nsss")
+        #engine.setProperty('rate')   
+
         engine.setProperty('voice', 'com.apple.voice.compact.en-GB.Daniel')
         engine.say("a")
         engine.save_to_file(text, save_path)
@@ -284,134 +295,3 @@ def concatenate_audio(filepaths : List, output_url: str):
         output_url
     ]
     subprocess.run(command)
-
-
-    
-    
-
-#the base dir so this works across everything
-base_dir : str = os.path.dirname(os.path.abspath(__file__))
-
-video_url : str = os.path.join(base_dir,"assets/bgVideos/bballBoom2.mp4")
-tts_audio_url : str = os.path.join(base_dir,"outputs/tts_audio.wav")
-final_audio_url : str = os.path.join(base_dir, "outputs/final_audio.wav")
-caption_url : str = os.path.join(base_dir,"outputs/caption.txt")
-subtitle_url : str = os.path.join(base_dir,"outputs/subtitles.ass")
-reddit_card_url: str = os.path.join(base_dir,"outputs/reddit_card.png")
-output_video_url : str = os.path.join(base_dir, "outputs/video.mp4")
-ding_audio_url: str = os.path.join(base_dir, "assets/ding.mp3")
-
-#config subtitles (font, size, color, strings)
-subtitle_font = "Phosphate"
-subtitle_size = "30"
-subtitle_color = "&HFDB5A3"
-
-end_of_reddit_card = None
-tts_audio_length = 0
-
-#get options, and set up proper vars
-options = json.loads(sys.argv[2])
-voice_rate = int(options.get('Voice Rate (1-250)', "125"))
-tts_software = options.get('Voice Software',"")
-parts = int(options.get('Number of Parts',))
-
-
-#configure praw
-reddit = praw.Reddit(
-    client_id = config.client_id,
-    client_secret = config.client_secret,
-    password = config.password,
-    username = config.username,
-    user_agent = config.user_agent,
-)
-#configure language_tool
-tool = language_tool_python.LanguageTool('en-US')
-#configure voice tts
-if (tts_software == "ElevenLabs"):
-    #elevenlabs
-    client = ElevenLabs(
-        api_key=config.elevenlabs_api_key 
-    )
-else:
-    #configure pyttsx3
-    engine = pyttsx3.init("nsss")
-    engine.setProperty('rate', voice_rate)    
-#config task obj for aeneas
-config_string = u"task_language=eng|is_text_type=plain|os_task_file_format=json"
-aeneas_task = Task(config_string=config_string)
-#configure YAKE, "tagger" because grabs keywords for tags in caption
-tagger = kw_extractor = KeywordExtractor(lan="en")
-
-
-
-
-#get url from user, set as submission, get all relevant info
-url: str = sys.argv[1]
-submission: praw.models.Submission = reddit.submission(url=url)
-post = get_title_user_and_body(submission)
-
-generate_reddit_card()
-
-#run language_tool on body
-corrected_text = tool.correct(post['body'])
-corrected_text = create_body_string(corrected_text)
-
-#concenate all relevant fields of post into one string
-transcript = post['title'] + ",,\n\n"
-transcript+= corrected_text
-
-#write corrected text to txt file
-f = open(os.path.join(base_dir, "outputs/transcript.txt"), "w")
-f.write(transcript)
-f.close()
-
-#generate a caption based on keywords of text
-generate_caption(transcript)
-
-if (parts == 1) :
-    #create audio, concat with ding, get length of audio
-    create_audio(software=tts_software, text=transcript, save_path=tts_audio_url)
-    concatenate_audio([ding_audio_url, tts_audio_url], final_audio_url)
-    final_audio_length = librosa.get_duration(path=final_audio_url)
-
-    #get random time to start video for variance using length of audio
-    time_start : str = get_random_video_start(video_url) 
-
-    #use alligner to generate subtitle map with audio 
-    create_subtitle_map(audio_url=final_audio_url, text_url=os.path.join(base_dir, "outputs/transcript.txt"))
-
-    #generate subtitles and set end of reddit card
-    write_subtitles()
-
-    #combine video and audio and subs
-    create_video(video_url)
-
-# have a diff process if video splitting
-else :
-
-    #record n save tts of "follow for i"
-    for i in range(0, parts-1):
-        follow_save_url : str = os.path.join(base_dir,f"outputs/follow{i}.wav")
-        sequel_text = f"Follow for part {i+2}"
-        create_audio(software=tts_software, text=sequel_text, save_path=follow_save_url)
-
-    title_audio_url = os.path.join(base_dir,"outputs/title_audio.wav")
-    #record just the title part
-    create_audio(tts_software, post['title'], title_audio_url)
-
-    #now we must find out stop points
-    #once we find stop point, store it 
-    stop_points = []
-    corrected_text = corrected_text.split()
-    stop_point = int(len(corrected_text)/parts)
-    for i in range(0, parts-1):
-        while (True):
-            #must find natural stop; when we find period
-            if "." in corrected_text[stop_point*(i+1)]:
-                stop_points.append(stop_point)
-                break
-            else:
-                if stop_point < len(corrected_text):
-                    stop_point += 1
-                else:
-                    exit(0)
