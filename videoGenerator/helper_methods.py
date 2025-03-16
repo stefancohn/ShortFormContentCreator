@@ -3,7 +3,6 @@ import os
 import json
 import textwrap
 import json
-from dataclasses import dataclass
 import random
 from typing import List
 import config
@@ -18,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 import librosa
 from yake import KeywordExtractor
 from pyt2s.services import acapela
+from pyt2s.services import cepstral
 
 #Helper Methods
 
@@ -60,7 +60,7 @@ def generate_caption(text: str, subreddit, output_url: str) -> str:
     #get keywords
     tags: List[str] = [keyword for keyword, score in tagger.extract_keywords(text)]
     
-    caption = f"-\nMade With Short-Form Content Creator\nGame: BBall Boom\n#reddit #shorts #story #r #{subreddit} "
+    caption = f"-\nMade With Short-Form Content Creator\n#reddit #shorts #story #r #{subreddit} "
 
     for i in range(len(tags)):
         # want only first 4 tags
@@ -99,13 +99,13 @@ def create_subtitle_map(audio_url, text_url, output_url):
     aeneas_task.output_sync_map_file()
 
 #helper to use ffmpeg to create video
-def create_video(video_url, video_start, audio_url, subtitle_url):
+def create_video(video_url, audio_url, subtitle_url, output_url):
     reddit_card_url = os.path.join(base_dir,"outputs/reddit_card.png")
 
     ffmpeg_command = [
         "ffmpeg", "-y",
         "-stream_loop", "-1",
-        "-ss", video_start,
+        "-ss", get_random_video_start(video_url=video_url, audio_url=audio_url),
         "-i" , video_url, 
         "-i" , reddit_card_url, 
         "-i" , audio_url,
@@ -121,10 +121,10 @@ def create_video(video_url, video_start, audio_url, subtitle_url):
         "-map", "2", 
         "-c:v", "libx264",
         "-c:a", "aac", 
-        "-aspect", "9:16",
+        #"-aspect", "9:16",
         "-shortest", 
         "-async", "1",
-        os.path.join(base_dir,"outputs/video.mp4"),
+        output_url,
     ]
     subprocess.run(ffmpeg_command)
 
@@ -266,7 +266,7 @@ def create_audio(software : str, text: str, save_path: str) -> None :
 
     #use pyt2s
     elif(software == "Medium Quality") :
-        data = acapela.requestTTS(text=text, voice='darius22k')
+        data = cepstral.requestTTS(text=text, voice="David")
         with open(save_path, 'wb') as file :
             file.write(data)
 
@@ -304,3 +304,11 @@ def concatenate_audio(filepaths : List, output_url: str):
         output_url
     ]
     subprocess.run(command)
+
+def parse_background_video_input(input) -> str:
+    if input == "Basketball":
+        return os.path.join(base_dir,"assets/bgVideos/bballBoom2.mp4")
+    elif input == "CS Surf":
+        return os.path.join(base_dir,"assets/bgVideos/csSurf.mp4")
+    elif input == "Minecraft Parkour":
+        return os.path.join(base_dir,"assets/bgVideos/mcParkour.mp4")

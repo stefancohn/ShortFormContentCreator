@@ -10,6 +10,7 @@ function RedditVidGenerate() {
       "Voice Rate (1-250)": "125",
       "Voice Software": "PyTTS",
       "Number of Parts" : "1",
+      "Background Video" : "Basketball"
   });
 
   //handle url form submission 

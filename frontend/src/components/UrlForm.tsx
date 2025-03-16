@@ -67,7 +67,8 @@ function UrlForm({ type, handleUrlSubmit, optionsState, setOptionsState }: Props
                     }} 
                     selectOptions={{
                         "Voice Software": ["Low Quality", "Medium Quality", "AI-Powered",], 
-                        "Number of Parts" : ["1", "2", "3",]
+                        "Number of Parts" : ["1", "2", "3",],
+                        "Background Video" : ["Basketball", "CS Surf" , "Minecraft Parkour", ]
                     }}
                     onOptionsChange={(key, value) => {
                         //some verification for voice rate
